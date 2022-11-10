@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+pnpm-workspace.yaml
+package.json
+dist/
+public/
+.husky
+.vscode
+.eslintcache
+*.log
