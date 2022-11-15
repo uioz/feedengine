@@ -1,4 +1,4 @@
-import {readdir} from 'node:fs/promises';
+import {readdir, readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import type {Plugin as PluginI, App, OptionsConstructor} from 'feedengine-plugin';
 import {Initable} from '../types/index.js';
@@ -8,16 +8,14 @@ const pluginPattern = /feedengine-.+-plugin$/;
 
 class Plugin implements PluginI {
   name = '';
+  version = '';
   app?: App;
   options?: OptionsConstructor;
 
-  constructor(plugin: PluginI) {
+  constructor(plugin: PluginI, {name, version}: {name: string; version: string}) {
     Object.assign(this, plugin);
-  }
-
-  setName(name: string) {
     this.name = name;
-    return this;
+    this.version = version;
   }
 }
 
@@ -32,7 +30,7 @@ export class PluginManager implements Initable {
   }
 
   private async loadPlugins() {
-    const nodeModulesDir = resolve(this.appManager.rootDir, './node_modules');
+    const nodeModulesDir = resolve(this.appManager.rootDir, 'node_modules');
 
     const pluginNames = (await readdir(nodeModulesDir)).filter((name) => pluginPattern.test(name));
 
@@ -48,7 +46,14 @@ export class PluginManager implements Initable {
               plugin.app.dir = resolve(nodeModulesDir, pluginName, plugin.app.dir);
             }
 
-            return new Plugin(plugin).setName(pluginName);
+            return new Plugin(plugin, {
+              name: pluginName,
+              version: JSON.parse(
+                await readFile(resolve(nodeModulesDir, pluginName, 'package.json'), {
+                  encoding: 'utf-8',
+                })
+              ).version,
+            });
           }
 
           throw new Error(`the ${pluginName} doesn't have named export of plugin`);

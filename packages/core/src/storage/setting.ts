@@ -39,54 +39,23 @@ export class SettingManager implements Initable {
     await this.pluginSetting.sync({alter: true});
   }
 
-  async getPluginSetting<T>(name: string): Promise<PluginSetting<T> | null>;
-  async getPluginSetting<T>(
-    name: string,
-    initSetting?: PluginSetting<T>
-  ): Promise<PluginSetting<T>>;
-  async getPluginSetting<T>(name: string, initSetting?: PluginSetting<T>) {
+  async getPluginSetting<T>(name: string): Promise<PluginSetting<T> | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
     }
 
-    if (initSetting) {
-      const {settings, ...rest} = initSetting;
+    const result = await this.pluginSetting.findByPk<PluginSettingModel>(name);
 
-      const defaults = {
+    if (result) {
+      const {settings, ...rest} = result.dataValues;
+
+      return {
         ...rest,
-        settings: JSON.stringify(settings),
+        settings: JSON.parse(settings),
       };
-
-      const [result] = await this.pluginSetting.findOrCreate({
-        where: {
-          name,
-        },
-        defaults,
-      });
-
-      const data = {
-        name: result.dataValues.name,
-        version: result.dataValues.version,
-        settings: JSON.parse(result.dataValues.settings),
-      };
-
-      this.pluginSettingCache.set(name, data);
-
-      return data;
-    } else {
-      const result = await this.pluginSetting.findByPk<PluginSettingModel>(name);
-
-      if (result) {
-        const {settings, ...rest} = result.dataValues;
-
-        return {
-          ...rest,
-          settings: JSON.parse(settings),
-        };
-      }
-
-      return result;
     }
+
+    return result;
   }
 
   async setPluginSetting<T>({settings, ...rest}: PluginSetting<T>) {

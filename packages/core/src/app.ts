@@ -41,6 +41,18 @@ export class AppManager implements Initable {
     }
   }
 
+  private async checkSettings() {
+    const result = await this.deps.settingManager.getPluginSetting(this.name);
+
+    if (!result) {
+      await this.deps.settingManager.setPluginSetting({
+        name: this.name,
+        version: this.version,
+        settings: defaultAppSettings,
+      });
+    }
+  }
+
   async init() {
     await this.loadEntry();
 
@@ -48,11 +60,7 @@ export class AppManager implements Initable {
 
     await this.deps.settingManager.init();
 
-    await this.deps.settingManager.getPluginSetting(this.name, {
-      name: this.name,
-      version: this.version,
-      settings: defaultAppSettings,
-    });
+    await this.checkSettings();
 
     await this.deps.pluginManager.init();
   }
