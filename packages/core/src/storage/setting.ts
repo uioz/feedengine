@@ -34,9 +34,9 @@ export class SettingManager implements Initable {
   }
 
   async init() {
-    this.debug(`${SettingManager.name} init`);
-
     await this.pluginSetting.sync({alter: true});
+
+    this.debug(`${SettingManager.name} init`);
   }
 
   async getPluginSetting<T>(name: string): Promise<PluginSetting<T> | null> {

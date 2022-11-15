@@ -1,3 +1,6 @@
 export interface AppSettings {
-  color: string;
+  server: {
+    host: string;
+    port: number;
+  };
 }

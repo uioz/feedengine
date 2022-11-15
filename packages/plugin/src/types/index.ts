@@ -1,6 +1,8 @@
+import type {Debugger} from 'debug';
+
 export interface Context {
   // skip eslint
-  placeholder: null;
+  debug: Debugger;
 }
 
 export interface PluginOptions {

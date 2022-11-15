@@ -11,23 +11,27 @@ export class StorageManager implements Initable, Closeable {
   constructor({debug, cwd}: TopDeps) {
     this.debug = debug;
     this.cwd = cwd;
-  }
-
-  async init() {
-    this.debug(`${StorageManager.name} init`);
 
     this.sequelize = new Sequelize({
       dialect: 'sqlite',
       storage: resolve(this.cwd, 'db.sqlite'),
-      logging: this.debug,
+      logging: (sql) => this.debug(sql),
     });
+  }
 
+  async init() {
     await this.sequelize.authenticate();
+
+    this.debug(`${StorageManager.name} init`);
   }
 
   async close() {
-    this.debug(`${StorageManager.name} close`);
-
     await this.sequelize.close();
+
+    this.debug(`${StorageManager.name} close`);
+  }
+
+  getWorkspace(pluginName: string, taskName?: string) {
+    return resolve(this.cwd, pluginName, taskName ?? '');
   }
 }

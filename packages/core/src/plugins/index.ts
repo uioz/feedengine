@@ -1,7 +1,7 @@
 import {readdir, readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import type {Plugin as PluginI, App, OptionsConstructor} from 'feedengine-plugin';
-import {Initable} from '../types/index.js';
+import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 
 const pluginPattern = /feedengine-.+-plugin$/;
@@ -19,7 +19,7 @@ class Plugin implements PluginI {
   }
 }
 
-export class PluginManager implements Initable {
+export class PluginManager implements Initable, Closeable {
   plugins: Array<Plugin> = [];
   debug: TopDeps['debug'];
   appManager: TopDeps['appManager'];
@@ -70,7 +70,12 @@ export class PluginManager implements Initable {
   }
 
   async init() {
-    this.debug(`${PluginManager.name} init`);
     await this.loadPlugins();
+
+    this.debug(`${PluginManager.name} init`);
+  }
+
+  async close() {
+    this.debug(`${PluginManager.name} close`);
   }
 }

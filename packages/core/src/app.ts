@@ -1,16 +1,20 @@
 import {TopDeps} from './index.js';
-import type {Initable} from './types/index.js';
+import type {Initable, Closeable} from './types/index.js';
 import {findUp} from 'find-up';
 import {parse} from 'node:path';
 import {readFile} from 'node:fs/promises';
 import process from 'node:process';
 import {AppSettings} from './types/settings.js';
+import {MessageType} from './types/ipc.js';
 
 export const defaultAppSettings: AppSettings = {
-  color: 'default',
+  server: {
+    host: '127.0.0.1',
+    port: 8080,
+  },
 };
 
-export class AppManager implements Initable {
+export class AppManager implements Initable, Closeable {
   deps: TopDeps;
   rootDir!: string;
   version!: string;
@@ -42,7 +46,7 @@ export class AppManager implements Initable {
   }
 
   private async checkSettings() {
-    const result = await this.deps.settingManager.getPluginSetting(this.name);
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
 
     if (!result) {
       await this.deps.settingManager.setPluginSetting({
@@ -53,7 +57,37 @@ export class AppManager implements Initable {
     }
   }
 
+  async getServerConfig() {
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
+
+    if (result) {
+      return result.settings.server;
+    }
+
+    throw new Error('app settings was missing');
+  }
+
+  async restart() {
+    await this.close();
+
+    process.send!({
+      type: MessageType.restart,
+    });
+
+    process.disconnect();
+  }
+
+  async close() {
+    await Promise.all([this.deps.serverManager.close(), this.deps.pluginManager.close()]);
+
+    await this.deps.storageManager.close();
+
+    this.deps.debug(`${AppManager.name} close`);
+  }
+
   async init() {
+    this.deps.debug(`${AppManager.name} init`);
+
     await this.loadEntry();
 
     await this.deps.storageManager.init();
@@ -63,5 +97,7 @@ export class AppManager implements Initable {
     await this.checkSettings();
 
     await this.deps.pluginManager.init();
+
+    await this.deps.serverManager.init();
   }
 }

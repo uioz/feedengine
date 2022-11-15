@@ -6,6 +6,7 @@ import {cwd} from './utils/cwd.js';
 import type {Debugger} from 'debug';
 import {StorageManager} from './storage/index.js';
 import {SettingManager} from './storage/setting.js';
+import {ServerManager} from './server/index.js';
 
 export interface TopDeps {
   appManager: AppManager;
@@ -13,6 +14,7 @@ export interface TopDeps {
   debug: Debugger;
   storageManager: StorageManager;
   settingManager: SettingManager;
+  serverManager: ServerManager;
   cwd: string;
 }
 
@@ -24,6 +26,7 @@ contaienr.register({
   debug: asValue(debug),
   storageManager: asClass(StorageManager).singleton(),
   settingManager: asClass(SettingManager).singleton(),
+  serverManager: asClass(ServerManager).singleton(),
   cwd: asValue(cwd),
 });
 
