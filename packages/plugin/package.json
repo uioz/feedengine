@@ -1,0 +1,17 @@
+{
+  "name": "feedengine-plugin",
+  "version": "0.1.0",
+  "description": "",
+  "exports": "./dist/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "compile": "tsc --build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "feedengine": "workspace:^0.1.0"
+  }
+}
