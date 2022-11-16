@@ -3,4 +3,9 @@ export interface AppSettings {
     host: string;
     port: number;
   };
+  driver: {
+    headless: boolean;
+    executablePath: string;
+    userDataDir: string;
+  };
 }

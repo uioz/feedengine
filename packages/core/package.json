@@ -19,6 +19,9 @@
     "feedengine-app-plugin": "workspace:^0.1.0",
     "feedengine-plugin": "workspace:^0.1.0",
     "find-up": "^6.3.0",
+    "puppeteer-core": "^19.2.2",
+    "puppeteer-extra": "^3.3.4",
+    "puppeteer-extra-plugin-stealth": "^2.11.1",
     "sequelize": "^6.25.5",
     "sqlite3": "^5.1.2"
   },

@@ -12,6 +12,11 @@ export const defaultAppSettings: AppSettings = {
     host: '127.0.0.1',
     port: 8080,
   },
+  driver: {
+    headless: false,
+    executablePath: '',
+    userDataDir: '',
+  },
 };
 
 export class AppManager implements Initable, Closeable {
@@ -67,6 +72,16 @@ export class AppManager implements Initable, Closeable {
     throw new Error('app settings was missing');
   }
 
+  async getDriverConfig() {
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
+
+    if (result) {
+      return result.settings.driver;
+    }
+
+    throw new Error('app settings was missing');
+  }
+
   async restart() {
     await this.close();
 
@@ -95,6 +110,8 @@ export class AppManager implements Initable, Closeable {
     await this.deps.settingManager.init();
 
     await this.checkSettings();
+
+    await this.deps.driverManager.init();
 
     await this.deps.pluginManager.init();
 

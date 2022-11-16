@@ -1,21 +1,25 @@
 import type {FastifyPluginCallback} from 'fastify';
 import {TopDeps} from '../index.js';
 
-const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (fastify, {deps}, done) {
+const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
+  fastify,
+  {deps: {appManager, cwd}},
+  done
+) {
   fastify.get('/', (req, res) => {
-    res.send(deps.cwd);
+    res.send(cwd);
   });
 
   fastify.get('/restart', (req, res) => {
     res.status(200).send();
 
-    deps.appManager.restart();
+    appManager.restart();
   });
 
   fastify.get('/close', (req, res) => {
     res.status(200).send();
 
-    deps.appManager.close();
+    appManager.close();
   });
 
   done();
