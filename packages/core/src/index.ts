@@ -8,6 +8,8 @@ import {StorageManager} from './storage/index.js';
 import {SettingManager} from './storage/setting.js';
 import {ServerManager} from './server/index.js';
 import {DriverManager} from './driver/index.js';
+import {eventBus, type Eventbus} from './event/index.js';
+import {MessageManager} from './message/index.js';
 
 export interface TopDeps {
   appManager: AppManager;
@@ -17,6 +19,8 @@ export interface TopDeps {
   settingManager: SettingManager;
   serverManager: ServerManager;
   driverManager: DriverManager;
+  eventBus: Eventbus;
+  messageManager: MessageManager;
   cwd: string;
 }
 
@@ -30,6 +34,8 @@ contaienr.register({
   settingManager: asClass(SettingManager).singleton(),
   serverManager: asClass(ServerManager).singleton(),
   driverManager: asClass(DriverManager).singleton(),
+  eventBus: asValue(eventBus),
+  messageManager: asClass(MessageManager).singleton(),
   cwd: asValue(cwd),
 });
 

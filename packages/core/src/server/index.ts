@@ -1,6 +1,7 @@
 import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {fastify, type FastifyInstance} from 'fastify';
+import websocket from '@fastify/websocket';
 import api from './api.js';
 
 export class ServerManager implements Initable, Closeable {
@@ -11,6 +12,8 @@ export class ServerManager implements Initable, Closeable {
     this.deps = deps;
 
     this.server = fastify();
+
+    this.server.register(websocket as any);
 
     this.server.register(api, {
       deps,

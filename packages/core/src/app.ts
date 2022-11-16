@@ -93,9 +93,17 @@ export class AppManager implements Initable, Closeable {
   }
 
   async close() {
-    await Promise.all([this.deps.serverManager.close(), this.deps.pluginManager.close()]);
+    await this.deps.pluginManager.close();
+
+    await this.deps.messageManager.close();
+
+    await this.deps.serverManager.close();
+
+    await this.deps.driverManager.close();
 
     await this.deps.storageManager.close();
+
+    this.deps.eventBus.all.clear();
 
     this.deps.debug(`${AppManager.name} close`);
   }

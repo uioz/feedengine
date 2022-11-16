@@ -2,14 +2,14 @@ import * as PuppeteerCore from 'puppeteer-core';
 import type {Browser, LaunchOptions} from 'puppeteer-core';
 import {PuppeteerExtra} from 'puppeteer-extra';
 import Stealth from 'puppeteer-extra-plugin-stealth';
-import {Initable} from '../types/index.js';
+import {Initable, Closeable} from '../types/index.js';
 import type {TopDeps} from '../index.js';
 
 const puppeteer = new PuppeteerExtra(PuppeteerCore, undefined);
 
 puppeteer.use(Stealth());
 
-export class DriverManager implements Initable {
+export class DriverManager implements Initable, Closeable {
   appManager: TopDeps['appManager'];
   debug: TopDeps['debug'];
   #browser!: Browser;
@@ -44,6 +44,12 @@ export class DriverManager implements Initable {
     } else {
       // TODO: send message
     }
+
+    this.debug(`${DriverManager.name} init`);
+  }
+
+  async close() {
+    await this.#browser.close();
 
     this.debug(`${DriverManager.name} init`);
   }
