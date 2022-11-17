@@ -178,6 +178,10 @@ export class AppManager implements Initable, Closeable {
 
     await this.deps.driverManager.init();
 
+    // TODO: schedulerManager And taskManager
+
+    this.deps.pluginManager.create();
+
     await this.deps.serverManager.init();
   }
 }
