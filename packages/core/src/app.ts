@@ -24,6 +24,7 @@ export class AppManager implements Initable, Closeable {
   rootDir!: string;
   version!: string;
   name!: string;
+  firstBooting = false;
 
   constructor(container: TopDeps) {
     this.deps = container;
@@ -54,6 +55,7 @@ export class AppManager implements Initable, Closeable {
     const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
 
     if (!result) {
+      this.firstBooting = true;
       await this.deps.settingManager.setPluginSetting({
         name: this.name,
         version: this.version,

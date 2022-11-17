@@ -70,12 +70,20 @@ export class PluginManager implements Initable, Closeable {
   }
 
   async init() {
+    if (this.appManager.firstBooting) {
+      return;
+    }
+
     await this.loadPlugins();
 
     this.debug(`${PluginManager.name} init`);
   }
 
   async close() {
+    if (!this.appManager.firstBooting) {
+      // TODO: close
+    }
+
     this.debug(`${PluginManager.name} close`);
   }
 }

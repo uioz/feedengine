@@ -20,6 +20,10 @@ export class DriverManager implements Initable, Closeable {
   }
 
   async init() {
+    if (this.appManager.firstBooting) {
+      return;
+    }
+
     const userConfig = await this.appManager.getDriverConfig();
 
     if (userConfig.executablePath && userConfig.userDataDir) {
@@ -49,7 +53,9 @@ export class DriverManager implements Initable, Closeable {
   }
 
   async close() {
-    await this.#browser.close();
+    if (!this.appManager.firstBooting) {
+      await this.#browser.close();
+    }
 
     this.debug(`${DriverManager.name} init`);
   }
