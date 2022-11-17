@@ -1,6 +1,8 @@
 import {definePlugin} from 'feedengine-plugin';
 
-export const plugin = definePlugin({
-  settingUrl: 'setting',
-  dir: './dist',
-});
+export const plugin = definePlugin(() => ({
+  app: {
+    settingUrl: 'setting',
+    dir: './dist',
+  },
+}));

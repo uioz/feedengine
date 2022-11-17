@@ -1,6 +1,5 @@
 import type {FastifyPluginCallback} from 'fastify';
 import {TopDeps} from '../index.js';
-import {MessageConsumed} from '../types/message.js';
 
 const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
   fastify,
@@ -30,8 +29,7 @@ const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
 
     connection.socket.once('open', () => messageManager.registerConsumer(send));
     connection.socket.on('message', (message) => {
-      const data: MessageConsumed = JSON.parse(message.toString());
-      messageManager.consume(data.id);
+      messageManager.consume(JSON.parse(message.toString()).id);
     });
     connection.socket.once('close', () => messageManager.unRegiserConsumer(send));
     connection.socket.once('error', () => messageManager.unRegiserConsumer(send));

@@ -86,12 +86,9 @@ importers:
 
   packages/plugin:
     specifiers:
-      '@types/debug': ^4.1.7
       feedengine: workspace:^0.1.0
     dependencies:
       feedengine: link:../core
-    devDependencies:
-      '@types/debug': 4.1.7
 
 packages:
 

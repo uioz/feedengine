@@ -59,7 +59,7 @@ export class SettingManager implements Initable {
   }
 
   async setPluginSetting<T>({settings, ...rest}: PluginSetting<T>) {
-    await this.pluginSetting.create({
+    await this.pluginSetting.upsert({
       ...rest,
       settings: JSON.stringify(settings),
     });

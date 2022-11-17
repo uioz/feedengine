@@ -1,3 +1,4 @@
+export * from './types/index.js';
 import {createContainer, asClass, asValue} from 'awilix';
 import {AppManager} from './app.js';
 import {debug} from './utils/debug.js';

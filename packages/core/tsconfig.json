@@ -101,9 +101,5 @@
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    {
-      "path": "../plugin"
-    }
-  ]
+  "references": []
 }

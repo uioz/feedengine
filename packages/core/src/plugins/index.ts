@@ -1,21 +1,40 @@
 import {readdir, readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import type {Plugin as PluginI, App, OptionsConstructor} from 'feedengine-plugin';
 import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
+import {PluginOptionsConstructor, PluginContext, PluginOptions} from '../types/index.js';
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
-class Plugin implements PluginI {
-  name = '';
-  version = '';
-  app?: App;
-  options?: OptionsConstructor;
+export class Plugin implements PluginOptions {
+  name!: string;
+  version!: string;
+  dir?: string;
+  settingUrl?: string;
+  options!: PluginOptions;
 
-  constructor(plugin: PluginI, {name, version}: {name: string; version: string}) {
-    Object.assign(this, plugin);
-    this.name = name;
-    this.version = version;
+  constructor(
+    options: {
+      name: string;
+      version: string;
+      dir?: string;
+      settingUrl?: string;
+      options: PluginOptions;
+    },
+    public context: PluginContext
+  ) {
+    Object.assign(this, options);
+  }
+  onCreate() {
+    return this.options.onCreate?.();
+  }
+
+  onActive() {
+    return this.options.onActive?.();
+  }
+
+  onDispose() {
+    return this.options.onDispose?.();
   }
 }
 
@@ -37,23 +56,35 @@ export class PluginManager implements Initable, Closeable {
     const plugins = await Promise.allSettled(
       pluginNames.map(async (pluginName) => {
         try {
-          const {plugin} = (await import(pluginName)) as {plugin: PluginI};
+          const {plugin} = (await import(pluginName)) as {plugin: PluginOptionsConstructor};
 
           if (plugin) {
             this.debug(`load plugin ${pluginName}`);
 
-            if (plugin.app?.dir) {
-              plugin.app.dir = resolve(nodeModulesDir, pluginName, plugin.app.dir);
+            const context: PluginContext = {debug: this.debug};
+
+            const options = plugin(context);
+
+            if (options.app?.dir) {
+              options.app.dir = resolve(nodeModulesDir, pluginName, options.app.dir);
             }
 
-            return new Plugin(plugin, {
-              name: pluginName,
-              version: JSON.parse(
-                await readFile(resolve(nodeModulesDir, pluginName, 'package.json'), {
-                  encoding: 'utf-8',
-                })
-              ).version,
-            });
+            const version = JSON.parse(
+              await readFile(resolve(nodeModulesDir, pluginName, 'package.json'), {
+                encoding: 'utf-8',
+              })
+            ).version;
+
+            return new Plugin(
+              {
+                name: pluginName,
+                version,
+                dir: options.app?.dir,
+                settingUrl: options.app?.settingUrl,
+                options: options,
+              },
+              context
+            );
           }
 
           throw new Error(`the ${pluginName} doesn't have named export of plugin`);

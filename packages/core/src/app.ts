@@ -4,8 +4,46 @@ import {findUp} from 'find-up';
 import {parse} from 'node:path';
 import {readFile} from 'node:fs/promises';
 import process from 'node:process';
-import {AppSettings} from './types/settings.js';
+import {AppSettings, PluginSettings} from './types/settings.js';
 import {MessageType} from './types/ipc.js';
+
+export const defaultPluginConfig: PluginSettings = {
+  maxPages: 1,
+  maxIo: 1,
+  taskConcurrency: 1,
+  pageIntervalPerTask: 5000,
+  IoIntervalPerTask: 5000,
+};
+
+function diffPluginsSetting(
+  settings: AppSettings['performence'],
+  plugins: Array<{name: string}>
+): boolean {
+  let changed = false;
+
+  const temp: AppSettings['performence']['plugins'] = [];
+
+  for (const {name} of plugins) {
+    const pos = settings.plugins.findIndex((item) => item.name === name);
+
+    if (pos === -1) {
+      temp.push({
+        ...defaultPluginConfig,
+        name,
+      });
+      changed = true;
+    } else {
+      temp.push(settings.plugins[pos]);
+    }
+  }
+
+  if (temp.length !== settings.plugins.length || changed) {
+    settings.plugins = temp;
+    return true;
+  }
+
+  return false;
+}
 
 export const defaultAppSettings: AppSettings = {
   server: {
@@ -61,17 +99,24 @@ export class AppManager implements Initable, Closeable {
 
     if (!result) {
       this.firstBooting = true;
-      await this.deps.settingManager.setPluginSetting({
+
+      const settings = {
         name: this.name,
         version: this.version,
         settings: defaultAppSettings,
-      });
-    }
-  }
+      };
 
-  private pruneSettings() {
-    // 检查已经安装的插件, 从总设置中移除不需要的插件选项
-    // 监听 eventBus 在插件安装和卸载后创建设置
+      settings.settings.performence.plugins = this.deps.pluginManager.plugins.map(({name}) => ({
+        name,
+        ...defaultPluginConfig,
+      }));
+
+      await this.deps.settingManager.setPluginSetting(settings);
+    } else if (diffPluginsSetting(result.settings.performence, this.deps.pluginManager.plugins)) {
+      this.deps.debug(`${AppManager.name} settings.performence was pruned`);
+
+      await this.deps.settingManager.setPluginSetting(result);
+    }
   }
 
   async getServerConfig() {
@@ -125,15 +170,13 @@ export class AppManager implements Initable, Closeable {
 
     await this.loadEntry();
 
-    await this.deps.storageManager.init();
+    await Promise.all([this.deps.pluginManager.init(), this.deps.storageManager.init()]);
 
     await this.deps.settingManager.init();
 
     await this.checkSettings();
 
     await this.deps.driverManager.init();
-
-    await this.deps.pluginManager.init();
 
     await this.deps.serverManager.init();
   }
