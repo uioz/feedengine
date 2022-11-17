@@ -17,6 +17,11 @@ export const defaultAppSettings: AppSettings = {
     executablePath: '',
     userDataDir: '',
   },
+  performence: {
+    maxPages: 10,
+    maxIo: 10,
+    plugins: [],
+  },
 };
 
 export class AppManager implements Initable, Closeable {
@@ -62,6 +67,11 @@ export class AppManager implements Initable, Closeable {
         settings: defaultAppSettings,
       });
     }
+  }
+
+  private pruneSettings() {
+    // 检查已经安装的插件, 从总设置中移除不需要的插件选项
+    // 监听 eventBus 在插件安装和卸载后创建设置
   }
 
   async getServerConfig() {

@@ -1,24 +1,34 @@
 import {Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
-import {MessageConsumable} from '../types/message.js';
+import {MessageBase, MessageConsumable} from '../types/message.js';
+import {
+  NotificationType,
+  NotificationActionMessage,
+  NotificationMessage,
+  NotificationAction,
+} from '../types/message.js';
 
-export type MessageInternal<T extends MessageConsumable = any> = T['consumable'] extends true
-  ? {consumable: true; id: string; consumed: boolean}
-  : {consumable: false};
+function isConsumable(data: any): data is MessageConsumable {
+  if (data.consumable) {
+    return true;
+  }
+  return false;
+}
 
 export class MessageManager implements Closeable {
   debug: TopDeps['debug'];
-  consumer = new Map<(message: MessageInternal) => Promise<void>, () => void>();
-  notConsumed: Array<MessageInternal<{consumable: true; channel: string}>> = [];
-  pushRefs = new Set<(message: MessageInternal) => Promise<void>>();
+  consumer = new Map<(message: MessageBase) => Promise<void>, () => void>();
+  notConsumed: Array<MessageConsumable> = [];
+  pushRefs = new Set<(message: MessageBase) => Promise<void>>();
+  id = 0;
 
   constructor({debug}: TopDeps) {
     this.debug = debug;
   }
 
-  registerConsumer(send: (message: MessageInternal) => Promise<void>) {
+  registerConsumer(send: (message: MessageBase) => Promise<void>) {
     const createJob = () => {
-      const buffer: Array<MessageInternal> = [...this.notConsumed];
+      const buffer: Array<MessageBase> = [...this.notConsumed];
 
       let isRunning = false;
 
@@ -34,7 +44,7 @@ export class MessageManager implements Closeable {
         let item = buffer.shift();
 
         while (item && !isClose) {
-          if (item.consumable && item.consumed) {
+          if (isConsumable(item) && item.consumed) {
             item = buffer.shift();
             continue;
           }
@@ -52,7 +62,7 @@ export class MessageManager implements Closeable {
         isRunning = false;
       };
 
-      async function push(message: MessageInternal) {
+      async function push(message: MessageBase) {
         if (isClose) {
           return;
         }
@@ -85,14 +95,14 @@ export class MessageManager implements Closeable {
     run();
   }
 
-  unRegiserConsumer(cb: (message: MessageInternal) => Promise<void>) {
+  unRegiserConsumer(cb: (message: MessageBase) => Promise<void>) {
     this.consumer.get(cb)?.();
     this.consumer.delete(cb);
     this.pushRefs.delete(cb);
   }
 
-  push(message: MessageInternal) {
-    if (message.consumable) {
+  push<T extends MessageBase>(message: T) {
+    if (isConsumable(message)) {
       this.notConsumed.push(message);
     }
 
@@ -108,6 +118,49 @@ export class MessageManager implements Closeable {
       this.notConsumed[pos].consumed = true;
       this.notConsumed.splice(pos, 1);
     }
+  }
+
+  notification(source: string) {
+    const handler = (type: NotificationType) => (message: string) => {
+      this.push({
+        channel: 'notification',
+        source,
+        payload: {
+          type,
+          message,
+        },
+      } as NotificationMessage);
+    };
+
+    return {
+      warn: handler(NotificationType.warn),
+      error: handler(NotificationType.error),
+      info: handler(NotificationType.info),
+    };
+  }
+
+  confirm(source: string) {
+    const handler =
+      (type: NotificationType) => (message: string, actions: Array<NotificationAction>) => {
+        this.push({
+          channel: 'notification',
+          consumable: true,
+          consumed: false,
+          id: `${this.id++}`,
+          source,
+          payload: {
+            type,
+            message,
+            actions,
+          },
+        } as NotificationActionMessage);
+      };
+
+    return {
+      warn: handler(NotificationType.warn),
+      error: handler(NotificationType.error),
+      info: handler(NotificationType.info),
+    };
   }
 
   async close() {

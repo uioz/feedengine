@@ -12,11 +12,13 @@ puppeteer.use(Stealth());
 export class DriverManager implements Initable, Closeable {
   appManager: TopDeps['appManager'];
   debug: TopDeps['debug'];
+  messageManager: TopDeps['messageManager'];
   #browser!: Browser;
 
-  constructor({debug, appManager}: TopDeps) {
+  constructor({debug, appManager, messageManager}: TopDeps) {
     this.debug = debug;
     this.appManager = appManager;
+    this.messageManager = messageManager;
   }
 
   async init() {
@@ -27,10 +29,14 @@ export class DriverManager implements Initable, Closeable {
     const userConfig = await this.appManager.getDriverConfig();
 
     if (userConfig.executablePath && userConfig.userDataDir) {
-      this.#browser = await puppeteer.launch({
-        ...userConfig,
-        args: ['--no-sandbox'],
-      } as LaunchOptions);
+      try {
+        this.#browser = await puppeteer.launch({
+          ...userConfig,
+          args: ['--no-sandbox'],
+        } as LaunchOptions);
+      } catch (error) {
+        this.messageManager.notification(DriverManager.name).error(error + '');
+      }
 
       // const pages = await this.#browser.pages();
 
@@ -46,7 +52,13 @@ export class DriverManager implements Initable, Closeable {
       //   waitUntil: 'networkidle0',
       // });
     } else {
-      // TODO: send message
+      this.messageManager.confirm(DriverManager.name).error('required parameters missing', [
+        {
+          label: 'go to settings',
+          type: 'link',
+          payload: `/settings#${DriverManager.name}`,
+        },
+      ]);
     }
 
     this.debug(`${DriverManager.name} init`);
