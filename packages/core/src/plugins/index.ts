@@ -12,6 +12,7 @@ import {
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
 import type {FastifyPluginCallback} from 'fastify';
+import {EventEmitter} from 'node:events';
 
 const builtinPlugins = new Set(['feedengine-app-plugin']);
 
@@ -41,7 +42,8 @@ export class Plugin implements PluginOptions, Initable {
     private eventBus: Emitter<PluginSpaceEvent>,
     public name: string,
     private nodeModulesDir: string,
-    private deps: TopDeps
+    private deps: TopDeps,
+    private hook: Hook
   ) {
     if (builtinPlugins.has(name)) {
       this.baseUrl = '/';
@@ -50,14 +52,21 @@ export class Plugin implements PluginOptions, Initable {
       this.baseUrl = `/plugin/${name}/`;
       this.settingUrl = '';
     }
+
+    hook.once('allSettled', () => this.onActive());
   }
 
   private registerFastifyPlugin() {
     if (this.dir || this.fastifyPluginRegister) {
       this.deps.serverManager.server.register(
         (fastify, opts, done) => {
-          // TODO: 提供 hook 来对静态资源和插件提供的 API 进行阻拦如果插件启动失败
-          // fastify.addHook('onRequest')
+          fastify.addHook('onRequest', (req, res, done) => {
+            if (this.state === PluginState.onActive) {
+              done();
+            } else {
+              res.code(500).send();
+            }
+          });
 
           if (this.dir) {
             fastify.register(fastifyStatic, {
@@ -86,15 +95,17 @@ export class Plugin implements PluginOptions, Initable {
 
     const context = {
       debug: this.deps.debug,
-      confirm: {
-        warn: co(NotificationType.warn),
-        error: co(NotificationType.error),
-        info: co(NotificationType.info),
-      },
-      notification: {
-        warn: no(NotificationType.warn),
-        error: no(NotificationType.error),
-        info: no(NotificationType.info),
+      window: {
+        confirm: {
+          warn: co(NotificationType.warn),
+          error: co(NotificationType.error),
+          info: co(NotificationType.info),
+        },
+        notification: {
+          warn: no(NotificationType.warn),
+          error: no(NotificationType.error),
+          info: no(NotificationType.info),
+        },
       },
       exit: () => this.onDispose(),
       on: (key: any, handler: any) => {
@@ -117,13 +128,20 @@ export class Plugin implements PluginOptions, Initable {
 
         this.eventBus.off(key, handler);
       },
-      register: (callback: FastifyPluginCallback<Record<string, never>>) => {
+      registerFastifyPlugin: (callback: FastifyPluginCallback<Record<string, never>>) => {
         if (this.state !== PluginState.noReady) {
           throw new Error('the register only works before any hooks execution');
         }
 
         this.fastifyPluginRegister = callback;
       },
+      getSetting: () => this.deps.settingManager.getPluginSetting(this.name),
+      setSetting: (settings: unknown) =>
+        this.deps.settingManager.setPluginSetting({
+          name: this.name,
+          version: this.version,
+          settings,
+        }),
     };
 
     const eventBus = this.eventBus;
@@ -138,6 +156,7 @@ export class Plugin implements PluginOptions, Initable {
           if (prop in obj) {
             (obj as any)[prop] = value;
           } else {
+            // TODO: 可能要记录当前插件向 globalContext 写入的所有属性
             (eventBus as any)[prop] = value;
           }
           return true;
@@ -180,6 +199,7 @@ export class Plugin implements PluginOptions, Initable {
 
       this.plugin = plugin;
     } catch (error) {
+      this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
   }
@@ -187,9 +207,57 @@ export class Plugin implements PluginOptions, Initable {
   async onCreate() {
     this.state = PluginState.onCreate;
 
+    const hook = this.hook;
+
     try {
-      await this.plugin.onCreate?.();
+      await this.plugin.onCreate?.({
+        currentPluginVerison: this.version,
+        feedengineVersion: this.deps.appManager.version,
+        waitPlugins: (pluginNames) =>
+          new Promise((resolve, reject) => {
+            const namesThatNeedToWatch = new Set();
+
+            for (const targetName of pluginNames) {
+              if (!hook.pluginNames.has(targetName)) {
+                return reject(new Error(`There's no plugin called ${targetName}`));
+              }
+              if (hook.pluginThatError.has(targetName)) {
+                return reject(new Error(`loading plugin ${targetName} was failed`));
+              }
+              if (!hook.pluginThatCreated.has(targetName)) {
+                namesThatNeedToWatch.add(targetName);
+              }
+            }
+
+            if (namesThatNeedToWatch.size === 0) {
+              resolve();
+            }
+
+            const createdHandler = (name: string) => {
+              if (namesThatNeedToWatch.has(name)) {
+                namesThatNeedToWatch.delete(name);
+                if (namesThatNeedToWatch.size === 0) {
+                  resolve();
+                  hook.removeListener('created', createdHandler);
+                }
+              }
+            };
+
+            hook.on('created', createdHandler);
+
+            const errorHandler = (name: string) => {
+              if (namesThatNeedToWatch.has(name)) {
+                reject(new Error(`loading plugin ${name} was failed`));
+                hook.removeListener('error', errorHandler);
+              }
+            };
+
+            hook.on('error', errorHandler);
+          }),
+      });
+      this.hook.emit('created', this.name);
     } catch (error) {
+      this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
   }
@@ -224,7 +292,7 @@ export class Plugin implements PluginOptions, Initable {
 
   private errorHandler(error: unknown, destory = true) {
     this.state = PluginState.error;
-    this.context.confirm.error(error + '', [
+    this.context.window.confirm.error(error + '', [
       {
         label: 'restart',
         type: 'api',
@@ -235,6 +303,32 @@ export class Plugin implements PluginOptions, Initable {
     if (destory) {
       this.onDispose();
     }
+  }
+}
+
+class Hook extends EventEmitter {
+  pluginThatCreated = new Set<string>();
+  pluginThatError = new Set<string>();
+
+  constructor(public pluginNames: Set<string>) {
+    super();
+
+    const isPluginCreatedStateCompleted = () => {
+      if (this.pluginThatCreated.size + this.pluginThatError.size === this.pluginNames.size) {
+        this.emit('allSettled');
+        setImmediate(() => this.removeAllListeners());
+      }
+    };
+
+    this.on('error', (name) => {
+      this.pluginThatError.add(name);
+      isPluginCreatedStateCompleted();
+    });
+
+    this.on('created', (name) => {
+      this.pluginThatCreated.add(name);
+      isPluginCreatedStateCompleted();
+    });
   }
 }
 
@@ -255,6 +349,8 @@ export class PluginManager implements Initable, Closeable {
 
     const pluginNames = (await readdir(nodeModulesDir)).filter((name) => pluginPattern.test(name));
 
+    const hook = new Hook(new Set(pluginNames));
+
     const plugins = await Promise.allSettled(
       pluginNames.map(async (pluginName) => {
         try {
@@ -263,7 +359,7 @@ export class PluginManager implements Initable, Closeable {
           if (plugin) {
             this.debug(`load plugin ${pluginName}`);
 
-            const p = new Plugin(plugin, context, pluginName, nodeModulesDir, this.deps);
+            const p = new Plugin(plugin, context, pluginName, nodeModulesDir, this.deps, hook);
 
             await p.init();
 

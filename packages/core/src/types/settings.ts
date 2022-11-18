@@ -22,3 +22,9 @@ export interface AppSettings {
     plugins: Array<PluginSettings & {name: string}>;
   };
 }
+
+export interface PluginSetting<T = string> {
+  name: string;
+  version: string;
+  settings: T;
+}

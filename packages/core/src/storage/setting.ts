@@ -1,12 +1,6 @@
 import type {TopDeps} from '../index.js';
 import {DataTypes, InferAttributes, InferCreationAttributes, Model, ModelStatic} from 'sequelize';
-import type {Initable} from '../types/index.js';
-
-interface PluginSetting<T = string> {
-  name: string;
-  version: string;
-  settings: T;
-}
+import type {Initable, PluginSetting} from '../types/index.js';
 
 interface PluginSettingModel
   extends PluginSetting,
