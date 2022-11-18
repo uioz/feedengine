@@ -195,10 +195,6 @@ export class PluginManager implements Initable, Closeable {
   }
 
   async init() {
-    if (this.appManager.firstBooting) {
-      return;
-    }
-
     await this.loadPlugins();
 
     this.debug(`${PluginManager.name} init`);
@@ -215,13 +211,11 @@ export class PluginManager implements Initable, Closeable {
   }
 
   async close() {
-    if (!this.appManager.firstBooting) {
-      await Promise.all(
-        this.plugins
-          .filter((item) => item.state !== PluginState.onDispose)
-          .map((plugin) => () => plugin.onDispose())
-      );
-    }
+    await Promise.all(
+      this.plugins
+        .filter((item) => item.state !== PluginState.onDispose)
+        .map((plugin) => () => plugin.onDispose())
+    );
 
     this.debug(`${PluginManager.name} close`);
   }

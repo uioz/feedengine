@@ -156,7 +156,9 @@ export class AppManager implements Initable, Closeable {
 
     await this.deps.serverManager.close();
 
-    await this.deps.driverManager.close();
+    if (!this.firstBooting) {
+      await this.deps.driverManager.close();
+    }
 
     await this.deps.storageManager.close();
 
@@ -176,7 +178,9 @@ export class AppManager implements Initable, Closeable {
 
     await this.checkSettings();
 
-    await this.deps.driverManager.init();
+    if (!this.firstBooting) {
+      await this.deps.driverManager.init();
+    }
 
     // TODO: schedulerManager And taskManager
 
