@@ -10,6 +10,10 @@ import {
   PluginSpaceContext,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
+import fastifyStatic from '@fastify/static';
+import type {FastifyPluginCallback} from 'fastify';
+
+const builtinPlugins = new Set(['feedengine-app-plugin']);
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
@@ -24,30 +28,64 @@ enum PluginState {
 export class Plugin implements PluginOptions, Initable {
   version!: string;
   dir?: string;
-  settingUrl?: string;
+  settingUrl: string;
+  baseUrl: string;
   plugin!: PluginOptions;
   state: PluginState = PluginState.noReady;
   context!: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>;
+  eventListener = new Map<any, Set<any>>();
+  fastifyPluginRegister?: FastifyPluginCallback<Record<string, never>>;
 
   constructor(
     private options: PluginOptionsConstructor,
-    private pluginManager: PluginManager,
     private eventBus: Emitter<PluginSpaceEvent>,
     public name: string,
-    private nodeModulesDir: string
-  ) {}
+    private nodeModulesDir: string,
+    private deps: TopDeps
+  ) {
+    if (builtinPlugins.has(name)) {
+      this.baseUrl = '/';
+      this.settingUrl = '';
+    } else {
+      this.baseUrl = `/plugin/${name}/`;
+      this.settingUrl = '';
+    }
+  }
+
+  private registerFastifyPlugin() {
+    if (this.dir || this.fastifyPluginRegister) {
+      this.deps.serverManager.server.register(
+        (fastify, opts, done) => {
+          // TODO: 提供 hook 来对静态资源和插件提供的 API 进行阻拦如果插件启动失败
+          // fastify.addHook('onRequest')
+
+          if (this.dir) {
+            fastify.register(fastifyStatic, {
+              root: this.dir,
+              wildcard: false,
+            });
+          }
+
+          if (this.fastifyPluginRegister) {
+            this.fastifyPluginRegister(fastify, {}, done);
+          } else {
+            done();
+          }
+        },
+        {
+          prefix: this.baseUrl,
+        }
+      );
+    }
+  }
 
   async init() {
-    const no = (type: NotificationType) =>
-      this.pluginManager.messageManager.notification(this.name)[type];
+    const no = (type: NotificationType) => this.deps.messageManager.notification(this.name)[type];
 
-    const co = (type: NotificationType) =>
-      this.pluginManager.messageManager.confirm(this.name)[type];
-
-    // TODO: 提供更加具体的错误
+    const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
     const context = {
-      debug: this.pluginManager.debug,
+      debug: this.deps.debug,
       confirm: {
         warn: co(NotificationType.warn),
         error: co(NotificationType.error),
@@ -57,6 +95,34 @@ export class Plugin implements PluginOptions, Initable {
         warn: no(NotificationType.warn),
         error: no(NotificationType.error),
         info: no(NotificationType.info),
+      },
+      exit: () => this.onDispose(),
+      on: (key: any, handler: any) => {
+        const listener = this.eventListener.get(key);
+
+        if (listener) {
+          listener.add(handler);
+        } else {
+          this.eventListener.set(key, new Set([listener]));
+        }
+
+        this.eventBus.on(key, handler);
+      },
+      off: (key: any, handler: any) => {
+        const listener = this.eventListener.get(key);
+
+        if (listener) {
+          listener.delete(handler);
+        }
+
+        this.eventBus.off(key, handler);
+      },
+      register: (callback: FastifyPluginCallback<Record<string, never>>) => {
+        if (this.state !== PluginState.noReady) {
+          throw new Error('the register only works before any hooks execution');
+        }
+
+        this.fastifyPluginRegister = callback;
       },
     };
 
@@ -83,17 +149,34 @@ export class Plugin implements PluginOptions, Initable {
     );
 
     try {
-      const plugin = this.options(this.context);
-
-      if (plugin.app?.dir) {
-        this.dir = resolve(this.nodeModulesDir, this.name, plugin.app.dir);
-      }
+      const plugin = this.options(
+        this.context,
+        builtinPlugins.has(this.name) ? this.deps : undefined
+      );
 
       this.version = JSON.parse(
         await readFile(resolve(this.nodeModulesDir, this.name, 'package.json'), {
           encoding: 'utf-8',
         })
       ).version;
+
+      if (plugin.app) {
+        const {dir, baseUrl, settingUrl} = plugin.app;
+
+        this.dir = resolve(this.nodeModulesDir, this.name, dir);
+
+        if (baseUrl) {
+          this.baseUrl += baseUrl;
+        }
+
+        if (settingUrl) {
+          this.settingUrl = this.baseUrl + settingUrl;
+        } else {
+          this.settingUrl = this.baseUrl + 'settings';
+        }
+      }
+
+      this.registerFastifyPlugin();
 
       this.plugin = plugin;
     } catch (error) {
@@ -125,6 +208,14 @@ export class Plugin implements PluginOptions, Initable {
     this.state = PluginState.onDispose;
 
     try {
+      // TODO: 清空可能挂载的所有资源
+      for (const [key, sets] of this.eventListener.entries()) {
+        for (const handler of sets) {
+          this.eventBus.off(key, handler);
+        }
+        this.eventListener.delete(key);
+      }
+
       await this.plugin.onDispose?.();
     } catch (error) {
       this.errorHandler(error, false);
@@ -151,12 +242,10 @@ export class PluginManager implements Initable, Closeable {
   plugins: Array<Plugin> = [];
   debug: TopDeps['debug'];
   appManager: TopDeps['appManager'];
-  messageManager: TopDeps['messageManager'];
 
-  constructor({debug, appManager, messageManager}: TopDeps) {
-    this.debug = debug;
-    this.appManager = appManager;
-    this.messageManager = messageManager;
+  constructor(private deps: TopDeps) {
+    this.debug = deps.debug;
+    this.appManager = deps.appManager;
   }
 
   private async loadPlugins() {
@@ -174,7 +263,7 @@ export class PluginManager implements Initable, Closeable {
           if (plugin) {
             this.debug(`load plugin ${pluginName}`);
 
-            const p = new Plugin(plugin, this, context, pluginName, nodeModulesDir);
+            const p = new Plugin(plugin, context, pluginName, nodeModulesDir, this.deps);
 
             await p.init();
 
@@ -204,8 +293,6 @@ export class PluginManager implements Initable, Closeable {
     for (const plugin of this.plugins) {
       if (plugin.state !== PluginState.error) {
         plugin.onCreate();
-        // TODO: 全部插件 create 执行完成后执行插件的 active, 在 create 中挂载 server, 不在此处 await 让 server 快速启动
-        // TODO: 加载静态资源, feedengine-app-plugin 作为例外可以使用任意挂载点
       }
     }
   }

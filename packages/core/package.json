@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fastify/static": "^6.5.0",
     "@fastify/websocket": "^7.1.1",
     "awilix": "^8.0.0",
     "debug": "^4.3.4",
