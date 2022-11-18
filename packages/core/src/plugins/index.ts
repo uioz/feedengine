@@ -300,7 +300,7 @@ export class PluginManager implements Initable, Closeable {
   async close() {
     await Promise.all(
       this.plugins
-        .filter((item) => item.state !== PluginState.onDispose)
+        .filter((item) => item.state === PluginState.onActive)
         .map((plugin) => () => plugin.onDispose())
     );
 
