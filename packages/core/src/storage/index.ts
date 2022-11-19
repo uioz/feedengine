@@ -5,16 +5,16 @@ import {resolve} from 'node:path';
 
 export class StorageManager implements Initable, Closeable {
   log: TopDeps['log'];
-  cwd: TopDeps['cwd'];
+  rootDir: string;
   sequelize!: Sequelize;
 
-  constructor({log, cwd}: TopDeps) {
+  constructor({log, feedengine: {rootDir}}: TopDeps) {
     this.log = log.child({source: StorageManager.name});
-    this.cwd = cwd;
+    this.rootDir = rootDir;
 
     this.sequelize = new Sequelize({
       dialect: 'sqlite',
-      storage: resolve(this.cwd, 'db.sqlite'),
+      storage: resolve(this.rootDir, 'db.sqlite'),
       logging: (sql) => this.log.info(sql),
     });
   }
@@ -32,6 +32,6 @@ export class StorageManager implements Initable, Closeable {
   }
 
   getWorkspace(pluginName: string, taskName?: string) {
-    return resolve(this.cwd, pluginName, taskName ?? '');
+    return resolve(this.rootDir, pluginName, taskName ?? '');
   }
 }

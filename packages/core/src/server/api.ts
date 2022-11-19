@@ -3,11 +3,17 @@ import {TopDeps} from '../index.js';
 
 const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
   fastify,
-  {deps: {appManager, cwd, messageManager}},
+  {
+    deps: {
+      appManager,
+      feedengine: {rootDir},
+      messageManager,
+    },
+  },
   done
 ) {
   fastify.get('/', (req, res) => {
-    res.send(cwd);
+    res.send(rootDir);
   });
 
   fastify.get('/restart', (req, res) => {

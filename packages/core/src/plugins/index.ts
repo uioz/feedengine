@@ -212,7 +212,7 @@ export class Plugin implements PluginOptions, Initable {
     try {
       await this.plugin.onCreate?.({
         currentPluginVerison: this.version,
-        feedengineVersion: this.deps.appManager.version,
+        feedengineVersion: this.deps.feedengine.version,
         waitPlugins: (pluginNames) =>
           new Promise((resolve, reject) => {
             const namesThatNeedToWatch = new Set();
@@ -345,7 +345,7 @@ export class PluginManager implements Initable, Closeable {
   private async loadPlugins() {
     const context = mitt<PluginSpaceEvent>();
 
-    const nodeModulesDir = resolve(this.appManager.rootDir, 'node_modules');
+    const nodeModulesDir = resolve(this.deps.feedengine.rootDir, 'node_modules');
 
     const pluginNames = (await readdir(nodeModulesDir)).filter((name) => pluginPattern.test(name));
 

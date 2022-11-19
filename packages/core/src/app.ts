@@ -1,8 +1,5 @@
 import {TopDeps} from './index.js';
 import type {Initable, Closeable} from './types/index.js';
-import {findUp} from 'find-up';
-import {parse} from 'node:path';
-import {readFile} from 'node:fs/promises';
 import process from 'node:process';
 import {AppSettings, PluginSettings} from './types/settings.js';
 import {MessageType} from './types/ipc.js';
@@ -64,9 +61,6 @@ export const defaultAppSettings: AppSettings = {
 
 export class AppManager implements Initable, Closeable {
   deps: TopDeps;
-  rootDir!: string;
-  version!: string;
-  name!: string;
   firstBooting = false;
   log: TopDeps['log'];
 
@@ -76,35 +70,17 @@ export class AppManager implements Initable, Closeable {
     process.on('exit', () => this.log.info('exit'));
   }
 
-  private async loadEntry() {
-    const root = await findUp('package.json');
-
-    if (root) {
-      const {version, name} = JSON.parse(
-        await readFile(root, {
-          encoding: 'utf-8',
-        })
-      );
-
-      this.version = version;
-
-      this.name = name;
-
-      this.rootDir = parse(root).dir;
-    } else {
-      throw new Error('package.json missing');
-    }
-  }
-
   private async checkSettings() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+      this.deps.feedengine.name
+    );
 
     if (!result) {
       this.firstBooting = true;
 
       const settings = {
-        name: this.name,
-        version: this.version,
+        name: this.deps.feedengine.name,
+        version: this.deps.feedengine.version,
         settings: defaultAppSettings,
       };
 
@@ -122,7 +98,9 @@ export class AppManager implements Initable, Closeable {
   }
 
   async getServerConfig() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+      this.deps.feedengine.name
+    );
 
     if (result) {
       return result.settings.server;
@@ -132,7 +110,9 @@ export class AppManager implements Initable, Closeable {
   }
 
   async getDriverConfig() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(this.name);
+    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+      this.deps.feedengine.name
+    );
 
     if (result) {
       return result.settings.driver;
@@ -171,8 +151,6 @@ export class AppManager implements Initable, Closeable {
 
   async init() {
     this.log.info(`init`);
-
-    await this.loadEntry();
 
     await Promise.all([this.deps.pluginManager.init(), this.deps.storageManager.init()]);
 

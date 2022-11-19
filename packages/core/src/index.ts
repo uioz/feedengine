@@ -2,7 +2,7 @@ export * from './types/index.js';
 import {createContainer, asClass, asValue, asFunction} from 'awilix';
 import {AppManager} from './app.js';
 import {PluginManager} from './plugins/index.js';
-import {cwd} from './utils/cwd.js';
+import {findRootDir} from './utils/cwd.js';
 import {StorageManager} from './storage/index.js';
 import {SettingManager} from './storage/setting.js';
 import {ServerManager} from './server/index.js';
@@ -10,6 +10,8 @@ import {DriverManager} from './driver/index.js';
 import {eventBus, type Eventbus} from './event/index.js';
 import {MessageManager} from './message/index.js';
 import {log, type Log} from './utils/log.js';
+
+const feedengine = await findRootDir();
 
 export interface TopDeps {
   appManager: AppManager;
@@ -20,7 +22,11 @@ export interface TopDeps {
   driverManager: DriverManager;
   eventBus: Eventbus;
   messageManager: MessageManager;
-  cwd: string;
+  feedengine: {
+    rootDir: string;
+    name: string;
+    version: string;
+  };
   log: Log;
 }
 
@@ -36,7 +42,7 @@ contaienr.register({
   eventBus: asValue(eventBus),
   messageManager: asClass(MessageManager).singleton(),
   log: asFunction(log).singleton(),
-  cwd: asValue(cwd),
+  feedengine: asValue(feedengine),
 });
 
 contaienr.resolve('appManager').init();
