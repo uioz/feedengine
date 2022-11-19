@@ -94,7 +94,7 @@ export class Plugin implements PluginOptions, Initable {
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
     const context = {
-      debug: this.deps.debug,
+      log: this.deps.log.child({source: this.name}),
       window: {
         confirm: {
           warn: co(NotificationType.warn),
@@ -299,7 +299,7 @@ export class Plugin implements PluginOptions, Initable {
         payload: '/api/restart',
       },
     ]);
-    this.context.debug(error);
+    this.context.log.error(error);
     if (destory) {
       this.onDispose();
     }
@@ -334,11 +334,11 @@ class Hook extends EventEmitter {
 
 export class PluginManager implements Initable, Closeable {
   plugins: Array<Plugin> = [];
-  debug: TopDeps['debug'];
+  log: TopDeps['log'];
   appManager: TopDeps['appManager'];
 
   constructor(private deps: TopDeps) {
-    this.debug = deps.debug;
+    this.log = deps.log.child({source: PluginManager.name});
     this.appManager = deps.appManager;
   }
 
@@ -357,7 +357,7 @@ export class PluginManager implements Initable, Closeable {
           const {plugin} = (await import(pluginName)) as {plugin: PluginOptionsConstructor};
 
           if (plugin) {
-            this.debug(`load plugin ${pluginName}`);
+            this.log.info(`load plugin ${pluginName}`);
 
             const p = new Plugin(plugin, context, pluginName, nodeModulesDir, this.deps, hook);
 
@@ -368,7 +368,7 @@ export class PluginManager implements Initable, Closeable {
 
           throw new Error(`the ${pluginName} doesn't have named export of plugin`);
         } catch (error) {
-          this.debug(`load plugin ${pluginName} failed reason: ${error}`);
+          this.log.warn(`load plugin ${pluginName} failed reason: ${error}`);
           throw error;
         }
       })
@@ -382,7 +382,7 @@ export class PluginManager implements Initable, Closeable {
   async init() {
     await this.loadPlugins();
 
-    this.debug(`${PluginManager.name} init`);
+    this.log.info(`init`);
   }
 
   create() {
@@ -400,6 +400,6 @@ export class PluginManager implements Initable, Closeable {
         .map((plugin) => () => plugin.onDispose())
     );
 
-    this.debug(`${PluginManager.name} close`);
+    this.log.info(`close`);
   }
 }

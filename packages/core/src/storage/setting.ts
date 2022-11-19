@@ -8,13 +8,14 @@ interface PluginSettingModel
 
 export class SettingManager implements Initable {
   storageManager: TopDeps['storageManager'];
-  debug: TopDeps['debug'];
+  log: TopDeps['log'];
   pluginSetting: ModelStatic<PluginSettingModel>;
   pluginSettingCache = new Map<string, any>();
 
-  constructor({storageManager, debug}: TopDeps) {
+  constructor({storageManager, log}: TopDeps) {
     this.storageManager = storageManager;
-    this.debug = debug;
+
+    this.log = log.child({source: SettingManager.name});
 
     this.pluginSetting = this.storageManager.sequelize.define<PluginSettingModel>('PluginSetting', {
       name: {
@@ -30,7 +31,7 @@ export class SettingManager implements Initable {
   async init() {
     await this.pluginSetting.sync({alter: true});
 
-    this.debug(`${SettingManager.name} init`);
+    this.log.info(`init`);
   }
 
   async getPluginSetting<T>(name: string): Promise<PluginSetting<T> | null> {

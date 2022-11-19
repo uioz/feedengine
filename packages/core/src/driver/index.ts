@@ -11,12 +11,12 @@ puppeteer.use(Stealth());
 
 export class DriverManager implements Initable, Closeable {
   appManager: TopDeps['appManager'];
-  debug: TopDeps['debug'];
+  log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
   #browser!: Browser;
 
-  constructor({debug, appManager, messageManager}: TopDeps) {
-    this.debug = debug;
+  constructor({log, appManager, messageManager}: TopDeps) {
+    this.log = log.child({source: DriverManager.name});
     this.appManager = appManager;
     this.messageManager = messageManager;
   }
@@ -57,12 +57,12 @@ export class DriverManager implements Initable, Closeable {
       ]);
     }
 
-    this.debug(`${DriverManager.name} init`);
+    this.log.info(`init`);
   }
 
   async close() {
     await this.#browser.close();
 
-    this.debug(`${DriverManager.name} init`);
+    this.log.info(`close`);
   }
 }

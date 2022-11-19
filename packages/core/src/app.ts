@@ -68,10 +68,12 @@ export class AppManager implements Initable, Closeable {
   version!: string;
   name!: string;
   firstBooting = false;
+  log: TopDeps['log'];
 
   constructor(container: TopDeps) {
     this.deps = container;
-    process.on('exit', () => this.deps.debug('exit'));
+    this.log = container.log.child({source: AppManager.name});
+    process.on('exit', () => this.log.info('exit'));
   }
 
   private async loadEntry() {
@@ -113,7 +115,7 @@ export class AppManager implements Initable, Closeable {
 
       await this.deps.settingManager.setPluginSetting(settings);
     } else if (diffPluginsSetting(result.settings.performence, this.deps.pluginManager.plugins)) {
-      this.deps.debug(`${AppManager.name} settings.performence was pruned`);
+      this.log.info(`settings.performence was pruned`);
 
       await this.deps.settingManager.setPluginSetting(result);
     }
@@ -164,11 +166,11 @@ export class AppManager implements Initable, Closeable {
 
     this.deps.eventBus.all.clear();
 
-    this.deps.debug(`${AppManager.name} close`);
+    this.log.info(`close`);
   }
 
   async init() {
-    this.deps.debug(`${AppManager.name} init`);
+    this.log.info(`init`);
 
     await this.loadEntry();
 

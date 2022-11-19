@@ -1,9 +1,12 @@
 import {ChildProcess, fork} from 'node:child_process';
 import {type Message, MessageType} from './types/ipc.js';
-import Debug from 'debug';
 import process from 'node:process';
+import {dirname} from 'desm';
+import {log} from './utils/log.js';
 
-const debug = Debug('daemon');
+const debug = log({cwd: dirname(import.meta.url)}).child({
+  source: 'daemon',
+});
 
 function createChild() {
   const cp = fork('./index.js');
@@ -19,25 +22,25 @@ function handleMessage(cp: ChildProcess, cb: () => void) {
   cp.on('message', (message: Message) => {
     if (message.type === MessageType.restart) {
       restartFlag = true;
-      debug('recive restart message');
+      debug.info('recive restart message');
     }
   });
 
   cp.on('close', () => {
     if (restartFlag) {
       cp.removeAllListeners();
-      debug('child_process was closed, prepared for restart');
+      debug.info('child_process was closed, prepared for restart');
       Promise.resolve().then(cb);
     }
   });
 }
 
-process.on('exit', () => debug('exit'));
+process.on('exit', () => debug.info('exit'));
 
 function main() {
   const {cp} = createChild();
 
-  debug('fork child_process');
+  debug.info('fork child_process');
 
   handleMessage(cp, main);
 }

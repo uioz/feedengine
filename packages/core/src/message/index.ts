@@ -16,14 +16,14 @@ function isConsumable(data: any): data is MessageConsumable {
 }
 
 export class MessageManager implements Closeable {
-  debug: TopDeps['debug'];
+  log: TopDeps['log'];
   consumer = new Map<(message: MessageBase) => Promise<void>, () => void>();
   notConsumed: Array<MessageConsumable> = [];
   pushRefs = new Set<(message: MessageBase) => Promise<void>>();
   id = 0;
 
-  constructor({debug}: TopDeps) {
-    this.debug = debug;
+  constructor({log}: TopDeps) {
+    this.log = log.child({source: MessageManager.name});
   }
 
   registerConsumer(send: (message: MessageBase) => Promise<void>) {
@@ -168,6 +168,6 @@ export class MessageManager implements Closeable {
       this.unRegiserConsumer(cb);
     }
 
-    this.debug(`${MessageManager.name} close`);
+    this.log.info(`close`);
   }
 }

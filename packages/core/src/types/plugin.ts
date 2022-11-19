@@ -1,4 +1,4 @@
-import type {Debugger} from 'debug';
+import type {Logger} from 'pino';
 import {NotificationAction, PluginSetting} from '../types/index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
@@ -6,7 +6,7 @@ import type {FastifyPluginCallback} from 'fastify';
 import type {TopDeps} from '../index.js';
 
 export interface PluginContext {
-  debug: Debugger;
+  log: Logger;
   window: {
     notification: {
       warn(message: string): void;

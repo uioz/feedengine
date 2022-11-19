@@ -4,31 +4,31 @@ import {Sequelize} from 'sequelize';
 import {resolve} from 'node:path';
 
 export class StorageManager implements Initable, Closeable {
-  debug: TopDeps['debug'];
+  log: TopDeps['log'];
   cwd: TopDeps['cwd'];
   sequelize!: Sequelize;
 
-  constructor({debug, cwd}: TopDeps) {
-    this.debug = debug;
+  constructor({log, cwd}: TopDeps) {
+    this.log = log.child({source: StorageManager.name});
     this.cwd = cwd;
 
     this.sequelize = new Sequelize({
       dialect: 'sqlite',
       storage: resolve(this.cwd, 'db.sqlite'),
-      logging: (sql) => this.debug(sql),
+      logging: (sql) => this.log.info(sql),
     });
   }
 
   async init() {
     await this.sequelize.authenticate();
 
-    this.debug(`${StorageManager.name} init`);
+    this.log.info(`init`);
   }
 
   async close() {
     await this.sequelize.close();
 
-    this.debug(`${StorageManager.name} close`);
+    this.log.info(`close`);
   }
 
   getWorkspace(pluginName: string, taskName?: string) {

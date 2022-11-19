@@ -51,40 +51,40 @@ importers:
     specifiers:
       '@fastify/static': ^6.5.0
       '@fastify/websocket': ^7.1.1
-      '@types/debug': ^4.1.7
       '@types/ws': ^8.5.3
       awilix: ^8.0.0
-      debug: ^4.3.4
       desm: ^1.3.0
       fastify: ^4.9.2
       feedengine-app-plugin: workspace:^0.1.0
       feedengine-plugin: workspace:^0.1.0
       find-up: ^6.3.0
       mitt: ^3.0.0
+      pino: ^8.7.0
       puppeteer-core: ^19.2.2
       puppeteer-extra: ^3.3.4
       puppeteer-extra-plugin-stealth: ^2.11.1
       sequelize: ^6.25.5
+      sonic-boom: ^3.2.0
       sqlite3: ^5.1.2
     dependencies:
       '@fastify/static': 6.5.0
       '@fastify/websocket': 7.1.1
       awilix: 8.0.0
-      debug: 4.3.4
       desm: 1.3.0
       fastify: 4.9.2
       feedengine-app-plugin: link:../app
       feedengine-plugin: link:../plugin
       find-up: 6.3.0
       mitt: 3.0.0
+      pino: 8.7.0
       puppeteer-core: 19.2.2
       puppeteer-extra: 3.3.4_puppeteer-core@19.2.2
       puppeteer-extra-plugin-stealth: 2.11.1_puppeteer-extra@3.3.4
       sequelize: 6.25.5_sqlite3@5.1.2
       sqlite3: 5.1.2
     devDependencies:
-      '@types/debug': 4.1.7
       '@types/ws': 8.5.3
+      sonic-boom: 3.2.0
 
   packages/plugin:
     specifiers:
@@ -513,6 +513,7 @@ packages:
     resolution: {integrity: sha512-9AonUzyTjXXhEOa0DnqpzZi6VHlqKMswga9EXjpXnnqxwLtdvPPtlO8evrI5D9S6asFRCQ6v+wpiUKbw+vKqyg==}
     dependencies:
       '@types/ms': 0.7.31
+    dev: false
 
   /@types/json-schema/7.0.11:
     resolution: {integrity: sha512-wOuvG1SN4Us4rez+tylwwwCV1psiNVOkJeM3AUWUNWg/jDQY2+HE/444y5gc+jBmRqASOm2Oeh5c1axHobwRKQ==}
@@ -524,6 +525,7 @@ packages:
 
   /@types/ms/0.7.31:
     resolution: {integrity: sha512-iiUgKzV9AuaEkZqkOLDIvlQiL6ltuZd9tGcW3gwpnX8JbuiuhFlEGmmFXEXkN50Cvq7Os88IY2v0dkDqXYWVgA==}
+    dev: false
 
   /@types/node/14.18.33:
     resolution: {integrity: sha512-qelS/Ra6sacc4loe/3MSjXNL1dNQ/GjxNHVzuChwMfmk7HuycRLVQN2qNY3XahK+fZc5E2szqQSKUyAF0E+2bg==}
@@ -1016,7 +1018,6 @@ packages:
   /atomic-sleep/1.0.0:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
     engines: {node: '>=8.0.0'}
-    dev: false
 
   /avvio/8.2.0:
     resolution: {integrity: sha512-bbCQdg7bpEv6kGH41RO/3B2/GMMmJSo2iBK+X8AWN9mujtfUipMDfIjsgHCfpnKqoGEQrrmCDKSa5OQ19+fDmg==}
@@ -3946,7 +3947,6 @@ packages:
     resolution: {integrity: sha512-SbbZ+Kqj/XIunvIAgUZRlqd6CGQYq71tRRbXR92Za8J/R3Yh4Av+TWENiSiEgnlwckYLyP0YZQWVfyNC0dzLaA==}
     dependencies:
       atomic-sleep: 1.0.0
-    dev: false
 
   /source-map-js/1.0.2:
     resolution: {integrity: sha512-R0XvVJ9WusLiqTCEiGCmICCMplcCkIwwR11mOSD9CR5u+IXYdiseeEuXCVAjS54zqwkLcPNnmU4OeJ6tUrWhDw==}

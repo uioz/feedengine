@@ -7,9 +7,12 @@ import api from './api.js';
 export class ServerManager implements Initable, Closeable {
   deps: TopDeps;
   server: FastifyInstance;
+  log: TopDeps['log'];
 
   constructor(deps: TopDeps) {
     this.deps = deps;
+
+    this.log = deps.log.child({source: ServerManager.name});
 
     this.server = fastify();
 
@@ -24,12 +27,12 @@ export class ServerManager implements Initable, Closeable {
   async init() {
     await this.server.listen(await this.deps.appManager.getServerConfig());
 
-    this.deps.debug('server init');
+    this.log.info('init');
   }
 
   async close() {
     await this.server.close();
 
-    this.deps.debug(`${ServerManager.name} close`);
+    this.log.info(`close`);
   }
 }

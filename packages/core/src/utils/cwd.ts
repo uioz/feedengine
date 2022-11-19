@@ -1,4 +1,4 @@
-import {filename} from 'desm';
-import {resolve, parse} from 'node:path';
+import {dirname} from 'desm';
+import {resolve} from 'node:path';
 
-export const cwd = resolve(parse(filename(import.meta.url)).dir, '..');
+export const cwd = resolve(dirname(import.meta.url), '..');
