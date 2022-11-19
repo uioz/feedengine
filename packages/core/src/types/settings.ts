@@ -1,8 +1,6 @@
 export interface PluginSettings {
-  maxPages: number; // 1 by default
   maxIo: number; // 1 by default
-  taskConcurrency: number; // 1 by default
-  pageIntervalPerTask: number; // 5000 by default
+  maxTask: number; // 1 by default
   IoIntervalPerTask: number; // 5000 by default
 }
 
@@ -17,8 +15,9 @@ export interface AppSettings {
     userDataDir: string;
   };
   performence: {
-    maxPages: number; // 10 by default
-    maxIo: number; // 10 by default
+    pagesConcurrency: number; // 10 by default
+    ioConcurrency: number; // 10 by default
+    taskConcurrency: number; // 1 by default
     plugins: Array<PluginSettings & {name: string}>;
   };
 }

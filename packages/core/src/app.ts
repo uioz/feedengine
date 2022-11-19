@@ -5,10 +5,8 @@ import {AppSettings, PluginSettings} from './types/settings.js';
 import {MessageType} from './types/ipc.js';
 
 export const defaultPluginConfig: PluginSettings = {
-  maxPages: 1,
   maxIo: 1,
-  taskConcurrency: 1,
-  pageIntervalPerTask: 5000,
+  maxTask: 1,
   IoIntervalPerTask: 5000,
 };
 
@@ -53,8 +51,9 @@ export const defaultAppSettings: AppSettings = {
     userDataDir: '',
   },
   performence: {
-    maxPages: 10,
-    maxIo: 10,
+    pagesConcurrency: 10,
+    ioConcurrency: 10,
+    taskConcurrency: 1,
     plugins: [],
   },
 };

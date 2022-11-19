@@ -6,7 +6,10 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "compile": "tsc --build"
+    "compile": "tsc --build",
+    "dev": "tsc -w",
+    "run:dev": "cross-env NODE_ENV=development node ./dist/index.js | pino-pretty",
+    "run:prod": "cross-env NODE_ENV=production node ./dist/index.js"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +33,8 @@
   },
   "devDependencies": {
     "@types/ws": "^8.5.3",
+    "cross-env": "^7.0.3",
+    "pino-pretty": "^9.1.1",
     "sonic-boom": "^3.2.0"
   }
 }
