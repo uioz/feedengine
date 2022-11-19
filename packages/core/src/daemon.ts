@@ -4,7 +4,10 @@ import process from 'node:process';
 import {dirname} from 'desm';
 import {log} from './utils/log.js';
 
-const debug = log({feedengine: {rootDir: dirname(import.meta.url)}}).child({
+const debug = log({
+  feedengine: {rootDir: dirname(import.meta.url)},
+  prod: process.env.NODE_ENV === 'production',
+}).child({
   source: 'daemon',
 });
 

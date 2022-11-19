@@ -35,7 +35,7 @@ export class Plugin implements PluginOptions, Initable {
   state: PluginState = PluginState.noReady;
   context!: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>;
   eventListener = new Map<any, Set<any>>();
-  fastifyPluginRegister?: FastifyPluginCallback<Record<string, never>>;
+  fastifyPluginRegister?: FastifyPluginCallback<any>;
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -76,10 +76,11 @@ export class Plugin implements PluginOptions, Initable {
           }
 
           if (this.fastifyPluginRegister) {
-            this.fastifyPluginRegister(fastify, {}, done);
-          } else {
-            done();
+            fastify.register(this.fastifyPluginRegister, {
+              prefix: `/api${this.baseUrl}`,
+            });
           }
+          done();
         },
         {
           prefix: this.baseUrl,
@@ -128,7 +129,7 @@ export class Plugin implements PluginOptions, Initable {
 
         this.eventBus.off(key, handler);
       },
-      registerFastifyPlugin: (callback: FastifyPluginCallback<Record<string, never>>) => {
+      registerFastifyPlugin: (callback: FastifyPluginCallback<any>) => {
         if (this.state !== PluginState.noReady) {
           throw new Error('the register only works before any hooks execution');
         }
@@ -202,6 +203,8 @@ export class Plugin implements PluginOptions, Initable {
       this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
+
+    this.context.log.info('init');
   }
 
   async onCreate() {
@@ -260,6 +263,8 @@ export class Plugin implements PluginOptions, Initable {
       this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
+
+    this.context.log.info('onCreate');
   }
 
   onActive() {
@@ -270,6 +275,8 @@ export class Plugin implements PluginOptions, Initable {
     } catch (error) {
       this.errorHandler(error);
     }
+
+    this.context.log.info('onActive');
   }
 
   async onDispose() {
@@ -288,6 +295,8 @@ export class Plugin implements PluginOptions, Initable {
     } catch (error) {
       this.errorHandler(error, false);
     }
+
+    this.context.log.info('onDispose');
   }
 
   private errorHandler(error: unknown, destory = true) {
@@ -315,8 +324,10 @@ class Hook extends EventEmitter {
 
     const isPluginCreatedStateCompleted = () => {
       if (this.pluginThatCreated.size + this.pluginThatError.size === this.pluginNames.size) {
-        this.emit('allSettled');
-        setImmediate(() => this.removeAllListeners());
+        setImmediate(() => {
+          this.emit('allSettled');
+          this.removeAllListeners();
+        });
       }
     };
 

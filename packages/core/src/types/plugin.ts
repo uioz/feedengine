@@ -20,7 +20,7 @@ export interface PluginContext {
     };
   };
   exit(): void;
-  registerFastifyPlugin(callback: FastifyPluginCallback<Record<string, never>>): void;
+  registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
   getSetting<T>(): Promise<PluginSetting<T> | null>;
   setSetting(setting: unknown): Promise<void>;
 }
@@ -39,7 +39,6 @@ export interface OnCreateContext {
 
 export interface PluginOptions {
   app?: PluginApp;
-  // TODO: settings , waitPlugin() -> read prop from context
   // TOOD: 插件的状态变化发送对应的消息
   onCreate?: (context: OnCreateContext) => Promise<void>;
   onActive?: () => void;

@@ -11,9 +11,12 @@ export class SettingManager implements Initable {
   log: TopDeps['log'];
   pluginSetting: ModelStatic<PluginSettingModel>;
   pluginSettingCache = new Map<string, any>();
+  prod: boolean;
 
-  constructor({storageManager, log}: TopDeps) {
+  constructor({storageManager, log, prod}: TopDeps) {
     this.storageManager = storageManager;
+
+    this.prod = prod;
 
     this.log = log.child({source: SettingManager.name});
 
@@ -29,7 +32,9 @@ export class SettingManager implements Initable {
   }
 
   async init() {
-    await this.pluginSetting.sync({alter: true});
+    if (this.prod) {
+      await this.pluginSetting.sync({alter: true});
+    }
 
     this.log.info(`init`);
   }

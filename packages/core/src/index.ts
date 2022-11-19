@@ -10,6 +10,7 @@ import {DriverManager} from './driver/index.js';
 import {eventBus, type Eventbus} from './event/index.js';
 import {MessageManager} from './message/index.js';
 import {log, type Log} from './utils/log.js';
+import {env} from 'node:process';
 
 const feedengine = await findRootDir();
 
@@ -28,6 +29,7 @@ export interface TopDeps {
     version: string;
   };
   log: Log;
+  prod: boolean;
 }
 
 const contaienr = createContainer<TopDeps>();
@@ -43,6 +45,7 @@ contaienr.register({
   messageManager: asClass(MessageManager).singleton(),
   log: asFunction(log).singleton(),
   feedengine: asValue(feedengine),
+  prod: asValue(env.NODE_ENV === 'production'),
 });
 
 contaienr.resolve('appManager').init();
