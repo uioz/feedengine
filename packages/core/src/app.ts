@@ -69,7 +69,7 @@ export class AppManager implements Initable, Closeable {
   }
 
   private async checkSettings() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
@@ -87,16 +87,16 @@ export class AppManager implements Initable, Closeable {
         ...defaultPluginConfig,
       }));
 
-      await this.deps.settingManager.setPluginSetting(settings);
+      await this.deps.settingManager.setPluginSettings(settings);
     } else if (diffPluginsSetting(result.settings.performence, this.deps.pluginManager.plugins)) {
       this.log.info(`settings.performence was pruned`);
 
-      await this.deps.settingManager.setPluginSetting(result);
+      await this.deps.settingManager.setPluginSettings(result);
     }
   }
 
   async getServerConfig() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
@@ -108,7 +108,7 @@ export class AppManager implements Initable, Closeable {
   }
 
   async getDriverConfig() {
-    const result = await this.deps.settingManager.getPluginSetting<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 

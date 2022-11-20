@@ -4,8 +4,17 @@ import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
 import type {TopDeps} from '../index.js';
+import type {
+  Model,
+  Attributes,
+  ModelAttributes,
+  ModelOptions,
+  ModelStatic,
+  Sequelize,
+} from 'sequelize';
 
 export interface PluginContext {
+  name: string;
   log: Logger;
   window: {
     notification: {
@@ -23,6 +32,11 @@ export interface PluginContext {
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
   getSettings<T>(): Promise<PluginSetting<T> | null>;
   setSettings(setting: unknown): Promise<void>;
+  getMainTable<M extends Model, TAttributes = Attributes<M>>(
+    attributes: ModelAttributes<M, TAttributes>,
+    options?: ModelOptions<M>
+  ): ModelStatic<M>;
+  getSequelize(): Sequelize;
 }
 
 export interface PluginApp {

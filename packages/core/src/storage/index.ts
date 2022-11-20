@@ -16,6 +16,9 @@ export class StorageManager implements Initable, Closeable {
       dialect: 'sqlite',
       storage: resolve(this.rootDir, 'db.sqlite'),
       logging: (sql) => this.log.info(sql),
+      define: {
+        freezeTableName: true,
+      },
     });
   }
 

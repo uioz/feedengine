@@ -1,1 +1,1 @@
-export {PluginOptionsConstructor, PluginApp, PluginContext, PluginOptions} from 'feedengine';
+export * from 'feedengine';

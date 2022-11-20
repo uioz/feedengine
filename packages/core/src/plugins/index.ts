@@ -15,6 +15,7 @@ import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
 import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
+import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 
 const builtinPlugins = new Set(['feedengine-app-plugin']);
 
@@ -101,6 +102,7 @@ export class Plugin implements PluginOptions, Initable {
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
     const context = {
+      name: this.name,
       log: this.deps.log.child({source: this.name}),
       window: {
         confirm: {
@@ -142,13 +144,20 @@ export class Plugin implements PluginOptions, Initable {
 
         this.fastifyPluginRegister = callback;
       },
-      getSettings: () => this.deps.settingManager.getPluginSetting(this.name),
+      getSettings: () => this.deps.settingManager.getPluginSettings(this.name),
       setSettings: (settings: unknown) =>
-        this.deps.settingManager.setPluginSetting({
+        this.deps.settingManager.setPluginSettings({
           name: this.name,
           version: this.version,
           settings,
         }),
+      getMainTable: <M extends Model, TAttributes = Attributes<M>>(
+        attributes: ModelAttributes<M, TAttributes>,
+        options?: ModelOptions<M>
+      ) => {
+        return this.deps.storageManager.sequelize.define(this.name, attributes, options);
+      },
+      getSequelize: () => this.deps.storageManager.sequelize,
     };
 
     const eventBus = this.eventBus;

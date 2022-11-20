@@ -9,7 +9,7 @@ interface PluginSettingModel
 export class SettingManager implements Initable {
   storageManager: TopDeps['storageManager'];
   log: TopDeps['log'];
-  pluginSetting: ModelStatic<PluginSettingModel>;
+  pluginSettings: ModelStatic<PluginSettingModel>;
   pluginSettingCache = new Map<string, any>();
   prod: boolean;
 
@@ -20,31 +20,34 @@ export class SettingManager implements Initable {
 
     this.log = log.child({source: SettingManager.name});
 
-    this.pluginSetting = this.storageManager.sequelize.define<PluginSettingModel>('PluginSetting', {
-      name: {
-        type: DataTypes.TEXT,
-        primaryKey: true,
-        unique: true,
-      },
-      version: DataTypes.TEXT,
-      settings: DataTypes.TEXT,
-    });
+    this.pluginSettings = this.storageManager.sequelize.define<PluginSettingModel>(
+      'PluginSettings',
+      {
+        name: {
+          type: DataTypes.TEXT,
+          primaryKey: true,
+          unique: true,
+        },
+        version: DataTypes.TEXT,
+        settings: DataTypes.TEXT,
+      }
+    );
   }
 
   async init() {
     if (this.prod) {
-      await this.pluginSetting.sync({alter: true});
+      await this.pluginSettings.sync({alter: true});
     }
 
     this.log.info(`init`);
   }
 
-  async getPluginSetting<T>(name: string): Promise<PluginSetting<T> | null> {
+  async getPluginSettings<T>(name: string): Promise<PluginSetting<T> | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
     }
 
-    const result = await this.pluginSetting.findByPk<PluginSettingModel>(name);
+    const result = await this.pluginSettings.findByPk<PluginSettingModel>(name);
 
     if (result) {
       const {settings, ...rest} = result.dataValues;
@@ -58,8 +61,8 @@ export class SettingManager implements Initable {
     return result;
   }
 
-  async setPluginSetting<T>({settings, ...rest}: PluginSetting<T>) {
-    await this.pluginSetting.upsert({
+  async setPluginSettings<T>({settings, ...rest}: PluginSetting<T>) {
+    await this.pluginSettings.upsert({
       ...rest,
       settings: JSON.stringify(settings),
     });

@@ -1,5 +1,5 @@
 {
-  "name": "feedengine-plugin",
+  "name": "feedengine-atom-plugin",
   "version": "0.1.0",
   "description": "",
   "exports": "./dist/index.js",
@@ -7,12 +7,15 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc --build",
-    "dev": "tsc --w"
+    "dev": "tsc -w"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "feedengine": "workspace:^0.1.0"
+    "feedengine-plugin": "workspace:^0.1.0"
+  },
+  "devDependencies": {
+    "sequelize": "^6.25.5"
   }
 }
