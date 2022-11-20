@@ -1,11 +1,14 @@
 import {Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
-import {MessageBase, MessageConsumable} from '../types/message.js';
 import {
   NotificationType,
-  NotificationActionMessage,
+  ConfirmMessage,
   NotificationMessage,
-  NotificationAction,
+  ConfimAction,
+  MessageBase,
+  MessageConsumable,
+  ProgressMessage,
+  ProgressHandler,
 } from '../types/message.js';
 
 function isConsumable(data: any): data is MessageConsumable {
@@ -18,8 +21,10 @@ function isConsumable(data: any): data is MessageConsumable {
 export class MessageManager implements Closeable {
   log: TopDeps['log'];
   consumer = new Map<(message: MessageBase) => Promise<void>, () => void>();
-  notConsumed: Array<MessageConsumable> = [];
+  consumableMessagesBuffer: Array<MessageConsumable> = [];
+  normalMessagesBuffer: Array<MessageBase> = [];
   pushRefs = new Set<(message: MessageBase) => Promise<void>>();
+  progressRefs = new Set<ProgressHandler<never>>();
   id = 0;
 
   constructor({log}: TopDeps) {
@@ -28,7 +33,7 @@ export class MessageManager implements Closeable {
 
   registerConsumer(send: (message: MessageBase) => Promise<void>) {
     const createJob = () => {
-      const buffer: Array<MessageBase> = [...this.notConsumed];
+      const buffer: Array<MessageBase> = [...this.consumableMessagesBuffer];
 
       let isRunning = false;
 
@@ -41,11 +46,11 @@ export class MessageManager implements Closeable {
 
         isRunning = true;
 
-        let item = buffer.shift();
+        let item = buffer.shift() ?? this.normalMessagesBuffer.shift();
 
         while (item && !isClose) {
           if (isConsumable(item) && item.consumed) {
-            item = buffer.shift();
+            item = buffer.shift() ?? this.normalMessagesBuffer.shift();
             continue;
           }
 
@@ -56,7 +61,7 @@ export class MessageManager implements Closeable {
             throw error;
           }
 
-          item = buffer.shift();
+          item = buffer.shift() ?? this.normalMessagesBuffer.shift();
         }
 
         isRunning = false;
@@ -103,20 +108,26 @@ export class MessageManager implements Closeable {
 
   push<T extends MessageBase>(message: T) {
     if (isConsumable(message)) {
-      this.notConsumed.push(message);
+      this.consumableMessagesBuffer.push(message);
     }
 
-    for (const push of this.pushRefs) {
-      push(message);
+    if (this.pushRefs.size === 0) {
+      if (message.channel === 'notification') {
+        this.normalMessagesBuffer.push(message);
+      }
+    } else {
+      for (const push of this.pushRefs) {
+        push(message);
+      }
     }
   }
 
   consume(id: string) {
-    const pos = this.notConsumed.findIndex((item) => item.id === id);
+    const pos = this.consumableMessagesBuffer.findIndex((item) => item.id === id);
 
     if (pos !== -1) {
-      this.notConsumed[pos].consumed = true;
-      this.notConsumed.splice(pos, 1);
+      this.consumableMessagesBuffer[pos].consumed = true;
+      this.consumableMessagesBuffer.splice(pos, 1);
     }
   }
 
@@ -140,21 +151,20 @@ export class MessageManager implements Closeable {
   }
 
   confirm(source: string) {
-    const handler =
-      (type: NotificationType) => (message: string, actions: Array<NotificationAction>) => {
-        this.push({
-          channel: 'notification',
-          consumable: true,
-          consumed: false,
-          id: `${this.id++}`,
-          source,
-          payload: {
-            type,
-            message,
-            actions,
-          },
-        } as NotificationActionMessage);
-      };
+    const handler = (type: NotificationType) => (message: string, actions: Array<ConfimAction>) => {
+      this.push({
+        channel: 'notification',
+        consumable: true,
+        consumed: false,
+        id: `${this.id++}`,
+        source,
+        payload: {
+          type,
+          message,
+          actions,
+        },
+      } as ConfirmMessage);
+    };
 
     return {
       warn: handler(NotificationType.warn),
@@ -163,9 +173,39 @@ export class MessageManager implements Closeable {
     };
   }
 
+  progress<T extends ProgressMessage>(source: string): ProgressHandler<T> {
+    let open = true;
+
+    const handler: ProgressHandler<T> = {
+      send: (data) => {
+        if (open) {
+          this.push({
+            channel: 'progress',
+            source,
+            ...data,
+          });
+        }
+
+        return handler;
+      },
+      end: () => {
+        open = false;
+        this.progressRefs.delete(handler);
+      },
+    };
+
+    this.progressRefs.add(handler);
+
+    return handler;
+  }
+
   async close() {
     for (const cb of this.consumer.keys()) {
       this.unRegiserConsumer(cb);
+    }
+
+    for (const progress of this.progressRefs) {
+      progress.end();
     }
 
     this.log.info(`close`);

@@ -14,7 +14,7 @@ export enum NotificationType {
   'info' = 'info',
 }
 
-export interface NotificationAction {
+export interface ConfimAction {
   label: string;
   type: 'link' | 'api';
   payload: string;
@@ -32,8 +32,24 @@ export interface NotificationMessage extends Notification, MessageBase {
   source: string;
 }
 
-export interface NotificationActionMessage extends Notification, MessageConsumable {
+export interface ConfirmMessage extends Notification, MessageConsumable {
   channel: 'notification';
   source: string;
-  payload: Notification['payload'] & {actions: Array<NotificationAction>};
+  payload: Notification['payload'] & {actions: Array<ConfimAction>};
+}
+
+export interface ProgressMessage extends MessageBase {
+  channel: 'progress';
+  source: string;
+  progress?: number;
+  message?: string;
+}
+
+export interface PluginLifeCycleProgress extends ProgressMessage {
+  state: 'init' | 'create' | 'active' | 'error';
+}
+
+export interface ProgressHandler<T extends ProgressMessage> {
+  send: (data: Omit<T, 'channel' | 'source'>) => this;
+  end: () => void;
 }

@@ -8,6 +8,8 @@ import {
   PluginOptions,
   PluginSpaceEvent,
   PluginSpaceContext,
+  PluginLifeCycleProgress,
+  ProgressHandler,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -36,6 +38,7 @@ export class Plugin implements PluginOptions, Initable {
   context!: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
+  lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -54,6 +57,8 @@ export class Plugin implements PluginOptions, Initable {
     }
 
     hook.once('allSettled', () => this.onActive());
+
+    this.lifecycleProgress = this.deps.messageManager.progress(name);
   }
 
   private registerFastifyPlugin() {
@@ -87,6 +92,10 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   async init() {
+    this.lifecycleProgress.send({
+      state: 'init',
+    });
+
     const no = (type: NotificationType) => this.deps.messageManager.notification(this.name)[type];
 
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
@@ -207,6 +216,10 @@ export class Plugin implements PluginOptions, Initable {
   async onCreate() {
     this.state = PluginState.onCreate;
 
+    this.lifecycleProgress.send({
+      state: 'create',
+    });
+
     const hook = this.hook;
 
     try {
@@ -267,12 +280,17 @@ export class Plugin implements PluginOptions, Initable {
   onActive() {
     this.state = PluginState.onActive;
 
+    this.lifecycleProgress.send({
+      state: 'active',
+    });
+
     try {
       this.plugin.onActive?.();
     } catch (error) {
       this.errorHandler(error);
     }
 
+    this.lifecycleProgress.end();
     this.context.log.info('onActive');
   }
 
@@ -298,6 +316,13 @@ export class Plugin implements PluginOptions, Initable {
 
   private errorHandler(error: unknown, destory = true) {
     this.state = PluginState.error;
+
+    this.lifecycleProgress
+      .send({
+        state: 'error',
+      })
+      .end();
+
     this.context.window.confirm.error(error + '', [
       {
         label: 'restart',

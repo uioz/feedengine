@@ -1,5 +1,5 @@
 import type {Logger} from 'pino';
-import {NotificationAction, PluginSetting} from '../types/index.js';
+import {ConfimAction, PluginSetting} from '../types/index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -14,9 +14,9 @@ export interface PluginContext {
       info(message: string): void;
     };
     confirm: {
-      warn(message: string, actions: Array<NotificationAction>): void;
-      error(message: string, actions: Array<NotificationAction>): void;
-      info(message: string, actions: Array<NotificationAction>): void;
+      warn(message: string, actions: Array<ConfimAction>): void;
+      error(message: string, actions: Array<ConfimAction>): void;
+      info(message: string, actions: Array<ConfimAction>): void;
     };
   };
   exit(): void;
