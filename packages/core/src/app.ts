@@ -7,7 +7,6 @@ import {MessageType} from './types/ipc.js';
 export const defaultPluginConfig: PluginSettings = {
   maxIo: 1,
   maxTask: 1,
-  IoIntervalPerTask: 5000,
 };
 
 function diffPluginsSetting(

@@ -1,7 +1,6 @@
 export interface PluginSettings {
   maxIo: number; // 1 by default
   maxTask: number; // 1 by default
-  IoIntervalPerTask: number; // 5000 by default
 }
 
 export interface AppSettings {
