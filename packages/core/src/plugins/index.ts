@@ -136,8 +136,8 @@ export class Plugin implements PluginOptions, Initable {
 
         this.fastifyPluginRegister = callback;
       },
-      getSetting: () => this.deps.settingManager.getPluginSetting(this.name),
-      setSetting: (settings: unknown) =>
+      getSettings: () => this.deps.settingManager.getPluginSetting(this.name),
+      setSettings: (settings: unknown) =>
         this.deps.settingManager.setPluginSetting({
           name: this.name,
           version: this.version,

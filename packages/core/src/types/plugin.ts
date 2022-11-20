@@ -21,8 +21,8 @@ export interface PluginContext {
   };
   exit(): void;
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
-  getSetting<T>(): Promise<PluginSetting<T> | null>;
-  setSetting(setting: unknown): Promise<void>;
+  getSettings<T>(): Promise<PluginSetting<T> | null>;
+  setSettings(setting: unknown): Promise<void>;
 }
 
 export interface PluginApp {
