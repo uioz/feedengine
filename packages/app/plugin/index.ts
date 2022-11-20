@@ -13,6 +13,7 @@ export const plugin = definePlugin(({log, registerFastifyPlugin}) => {
   return {
     app: {
       dir: './dist',
+      type: 'spa',
     },
   };
 });

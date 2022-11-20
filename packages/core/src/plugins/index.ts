@@ -49,7 +49,7 @@ export class Plugin implements PluginOptions, Initable {
       this.baseUrl = '/';
       this.settingUrl = '';
     } else {
-      this.baseUrl = `/plugin/${name}/`;
+      this.baseUrl = `/${name}/`;
       this.settingUrl = '';
     }
 
@@ -57,35 +57,32 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   private registerFastifyPlugin() {
-    if (this.dir || this.fastifyPluginRegister) {
-      this.deps.serverManager.server.register(
-        (fastify, opts, done) => {
-          fastify.addHook('onRequest', (req, res, done) => {
-            if (this.state === PluginState.onActive) {
-              done();
-            } else {
-              res.code(500).send();
-            }
+    if (this.dir) {
+      this.deps.serverManager.server.register(fastifyStatic, {
+        root: this.dir,
+        wildcard: false,
+        prefix: this.baseUrl,
+        allowedPath: () => this.state === PluginState.onActive,
+      });
+    }
+
+    if (this.fastifyPluginRegister) {
+      this.deps.serverManager.server.register((fastify, opts, done) => {
+        fastify.addHook('onRequest', (req, res, done) => {
+          if (this.state === PluginState.onActive) {
+            done();
+          } else {
+            res.code(500).send();
+          }
+        });
+
+        if (this.fastifyPluginRegister) {
+          fastify.register(this.fastifyPluginRegister, {
+            prefix: `/api${this.baseUrl}`,
           });
-
-          if (this.dir) {
-            fastify.register(fastifyStatic, {
-              root: this.dir,
-              wildcard: false,
-            });
-          }
-
-          if (this.fastifyPluginRegister) {
-            fastify.register(this.fastifyPluginRegister, {
-              prefix: `/api${this.baseUrl}`,
-            });
-          }
-          done();
-        },
-        {
-          prefix: this.baseUrl,
         }
-      );
+        done();
+      });
     }
   }
 

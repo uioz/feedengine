@@ -28,6 +28,7 @@ export interface PluginContext {
 export interface PluginApp {
   baseUrl?: string;
   settingUrl?: string;
+  type: 'spa' | 'static';
   dir: string;
 }
 
