@@ -30,7 +30,7 @@
 <script setup lang="ts">
 const links = [
   {text: '首页', icon: 'home', to: '/'},
-  {text: '任务', icon: 'task_alt', to: '/task'},
+  {text: '插件', icon: 'extension', to: '/plugin'},
   {text: '计划', icon: 'alarm', to: '/schedule'},
   {text: '设置', icon: 'settings', to: '/settings'},
 ];
