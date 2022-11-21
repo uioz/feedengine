@@ -27,17 +27,22 @@ export class SettingManager implements Initable {
           type: DataTypes.TEXT,
           primaryKey: true,
           unique: true,
+          allowNull: false,
         },
-        version: DataTypes.TEXT,
-        settings: DataTypes.TEXT,
+        version: {
+          type: DataTypes.TEXT,
+          allowNull: false,
+        },
+        settings: {
+          type: DataTypes.JSON,
+          allowNull: false,
+        },
       }
     );
   }
 
   async init() {
-    if (this.prod) {
-      await this.pluginSettings.sync({alter: true});
-    }
+    await this.pluginSettings.sync();
 
     this.log.info(`init`);
   }
@@ -49,24 +54,12 @@ export class SettingManager implements Initable {
 
     const result = await this.pluginSettings.findByPk<PluginSettingModel>(name);
 
-    if (result) {
-      const {settings, ...rest} = result.dataValues;
-
-      return {
-        ...rest,
-        settings: JSON.parse(settings),
-      };
-    }
-
-    return result;
+    return result?.dataValues ?? null;
   }
 
-  async setPluginSettings<T>({settings, ...rest}: PluginSetting<T>) {
-    await this.pluginSettings.upsert({
-      ...rest,
-      settings: JSON.stringify(settings),
-    });
+  async setPluginSettings<T>(settings: PluginSetting<T>) {
+    await this.pluginSettings.upsert(settings);
 
-    this.pluginSettingCache.set(rest.name, {settings, ...rest});
+    this.pluginSettingCache.set(settings.name, settings);
   }
 }

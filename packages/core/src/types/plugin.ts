@@ -14,6 +14,8 @@ import type {
 } from 'sequelize';
 
 export interface PluginContext {
+  feedengineVersion: string;
+  currentPluginVerison: string;
   name: string;
   log: Logger;
   window: {
@@ -32,7 +34,7 @@ export interface PluginContext {
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
   getSettings<T>(): Promise<PluginSetting<T> | null>;
   setSettings(setting: unknown): Promise<void>;
-  getMainTable<M extends Model, TAttributes = Attributes<M>>(
+  getMainModel<M extends Model, TAttributes = Attributes<M>>(
     attributes: ModelAttributes<M, TAttributes>,
     options?: ModelOptions<M>
   ): ModelStatic<M>;
@@ -47,8 +49,6 @@ export interface PluginApp {
 }
 
 export interface OnCreateContext {
-  feedengineVersion: string;
-  currentPluginVerison: string;
   waitPlugins(pluginNames: Array<string>): Promise<void>;
 }
 

@@ -34,13 +34,11 @@ export interface AtomCategory {
   label?: string;
 }
 
-// TODO: 数据库中 context 字段就是一个字符串类型, 写入前根据属性来判断格式化的效果
-
 export interface AtomContent {
   /**
    * mimetype
    */
-  type?: 'html' | 'xhtml' | 'text';
+  type?: 'html' | 'xhtml' | 'text' | string;
   src?: string;
   content: string;
 }
@@ -58,6 +56,8 @@ export interface AtomPluginMainTable {
   lang: string;
   content: AtomContent;
   updated: Date;
+  link: Array<AtomLink>;
+  title: string;
 }
 
 export interface AtomPluginMainTableModel

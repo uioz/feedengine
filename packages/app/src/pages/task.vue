@@ -1,3 +1,3 @@
 <template>
-  <div>plugin</div>
+  <div>task</div>
 </template>

@@ -14,7 +14,9 @@ export class ServerManager implements Initable, Closeable {
 
     this.log = deps.log.child({source: ServerManager.name});
 
-    this.server = fastify();
+    this.server = fastify({
+      logger: this.log,
+    });
 
     this.server.register(websocket as any);
 

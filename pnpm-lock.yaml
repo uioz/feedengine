@@ -82,6 +82,7 @@ importers:
       desm: ^1.3.0
       fastify: ^4.9.2
       feedengine-app-plugin: workspace:^0.1.0
+      feedengine-atom-plugin: workspace:^0.1.0
       feedengine-plugin: workspace:^0.1.0
       find-up: ^6.3.0
       mitt: ^3.0.0
@@ -99,6 +100,7 @@ importers:
       desm: 1.3.0
       fastify: 4.9.2
       feedengine-app-plugin: link:../app
+      feedengine-atom-plugin: link:../atom
       feedengine-plugin: link:../plugin
       find-up: 6.3.0
       mitt: 3.0.0

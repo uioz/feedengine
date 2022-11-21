@@ -10,15 +10,15 @@ export const defaultPluginConfig: PluginSettings = {
 };
 
 function diffPluginsSetting(
-  settings: AppSettings['performence'],
+  performance: AppSettings['performance'],
   plugins: Array<{name: string}>
 ): boolean {
   let changed = false;
 
-  const temp: AppSettings['performence']['plugins'] = [];
+  const temp: AppSettings['performance']['plugins'] = [];
 
   for (const {name} of plugins) {
-    const pos = settings.plugins.findIndex((item) => item.name === name);
+    const pos = performance.plugins.findIndex((item) => item.name === name);
 
     if (pos === -1) {
       temp.push({
@@ -27,12 +27,12 @@ function diffPluginsSetting(
       });
       changed = true;
     } else {
-      temp.push(settings.plugins[pos]);
+      temp.push(performance.plugins[pos]);
     }
   }
 
-  if (temp.length !== settings.plugins.length || changed) {
-    settings.plugins = temp;
+  if (temp.length !== performance.plugins.length || changed) {
+    performance.plugins = temp;
     return true;
   }
 
@@ -46,10 +46,10 @@ export const defaultAppSettings: AppSettings = {
   },
   driver: {
     headless: false,
-    executablePath: '',
-    userDataDir: '',
+    executablePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
+    userDataDir: 'C:\\Users\\zhao\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data',
   },
-  performence: {
+  performance: {
     pagesConcurrency: 10,
     ioConcurrency: 10,
     taskConcurrency: 1,
@@ -82,13 +82,13 @@ export class AppManager implements Initable, Closeable {
         settings: defaultAppSettings,
       };
 
-      settings.settings.performence.plugins = this.deps.pluginManager.plugins.map(({name}) => ({
+      settings.settings.performance.plugins = this.deps.pluginManager.plugins.map(({name}) => ({
         name,
         ...defaultPluginConfig,
       }));
 
       await this.deps.settingManager.setPluginSettings(settings);
-    } else if (diffPluginsSetting(result.settings.performence, this.deps.pluginManager.plugins)) {
+    } else if (diffPluginsSetting(result.settings.performance, this.deps.pluginManager.plugins)) {
       this.log.info(`settings.performence was pruned`);
 
       await this.deps.settingManager.setPluginSettings(result);

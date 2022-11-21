@@ -13,7 +13,7 @@ export interface AppSettings {
     executablePath: string;
     userDataDir: string;
   };
-  performence: {
+  performance: {
     pagesConcurrency: number; // 10 by default
     ioConcurrency: number; // 10 by default
     taskConcurrency: number; // 1 by default
@@ -21,7 +21,7 @@ export interface AppSettings {
   };
 }
 
-export interface PluginSetting<T = string> {
+export interface PluginSetting<T = any> {
   name: string;
   version: string;
   settings: T;

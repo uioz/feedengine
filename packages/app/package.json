@@ -6,8 +6,9 @@
   "exports": "./dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "vite",
+    "dev": "vite && tsc --project ./plugin/tsconfig.json -w",
     "dev:plugin": "tsc --project ./plugin/tsconfig.json -w",
+    "dev:app": "vite",
     "build:app": "vue-tsc && vite build",
     "build:plugin": "tsc --project ./plugin/tsconfig.json",
     "build": "vue-tsc && vite build && tsc --project ./plugin/tsconfig.json"

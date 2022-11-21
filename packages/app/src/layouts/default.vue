@@ -31,6 +31,7 @@
 const links = [
   {text: '首页', icon: 'home', to: '/'},
   {text: '插件', icon: 'extension', to: '/plugin'},
+  {text: '任务', icon: 'task', to: '/task'},
   {text: '计划', icon: 'alarm', to: '/schedule'},
   {text: '设置', icon: 'settings', to: '/settings'},
 ];

@@ -104,6 +104,9 @@
   "references": [
     {
       "path": "../../plugin"
+    },
+    {
+      "path": "../../core"
     }
   ]
 }

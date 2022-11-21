@@ -17,7 +17,7 @@ import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
 import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 
-const builtinPlugins = new Set(['feedengine-app-plugin']);
+const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin']);
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
@@ -102,6 +102,8 @@ export class Plugin implements PluginOptions, Initable {
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
     const context = {
+      currentPluginVerison: this.version,
+      feedengineVersion: this.deps.feedengine.version,
       name: this.name,
       log: this.deps.log.child({source: this.name}),
       window: {
@@ -151,7 +153,7 @@ export class Plugin implements PluginOptions, Initable {
           version: this.version,
           settings,
         }),
-      getMainTable: <M extends Model, TAttributes = Attributes<M>>(
+      getMainModel: <M extends Model, TAttributes = Attributes<M>>(
         attributes: ModelAttributes<M, TAttributes>,
         options?: ModelOptions<M>
       ) => {
@@ -233,8 +235,6 @@ export class Plugin implements PluginOptions, Initable {
 
     try {
       await this.plugin.onCreate?.({
-        currentPluginVerison: this.version,
-        feedengineVersion: this.deps.feedengine.version,
         waitPlugins: (pluginNames) =>
           new Promise((resolve, reject) => {
             const namesThatNeedToWatch = new Set();
