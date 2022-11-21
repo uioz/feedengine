@@ -1,6 +1,6 @@
-import {readdir, readFile} from 'node:fs/promises';
+import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {Initable, Closeable, NotificationType} from '../types/index.js';
+import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {
   PluginOptionsConstructor,
@@ -16,26 +16,27 @@ import fastifyStatic from '@fastify/static';
 import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
 import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
+import {NotificationType} from '../message/index.js';
+
+export enum PluginState {
+  notReady = 'notReady',
+  onCreate = 'onCreate',
+  onActive = 'onActive',
+  onDispose = 'onDispose',
+  error = 'error',
+}
 
 const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin']);
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
-enum PluginState {
-  noReady,
-  onCreate,
-  onActive,
-  onDispose,
-  error,
-}
-
 export class Plugin implements PluginOptions, Initable {
   version!: string;
   dir?: string;
-  settingUrl: string;
+  settingUrl?: string | true;
   baseUrl: string;
   plugin!: PluginOptions;
-  state: PluginState = PluginState.noReady;
+  state: keyof typeof PluginState = PluginState.notReady;
   context!: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
@@ -51,10 +52,8 @@ export class Plugin implements PluginOptions, Initable {
   ) {
     if (builtinPlugins.has(name)) {
       this.baseUrl = '/';
-      this.settingUrl = '';
     } else {
       this.baseUrl = `/${name}/`;
-      this.settingUrl = '';
     }
 
     hook.once('allSettled', () => this.onActive());
@@ -140,7 +139,7 @@ export class Plugin implements PluginOptions, Initable {
         this.eventBus.off(key, handler);
       },
       registerFastifyPlugin: (callback: FastifyPluginCallback<any>) => {
-        if (this.state !== PluginState.noReady) {
+        if (this.state !== PluginState.notReady) {
           throw new Error('the register only works before any hooks execution');
         }
 
@@ -206,10 +205,10 @@ export class Plugin implements PluginOptions, Initable {
           this.baseUrl += baseUrl;
         }
 
-        if (settingUrl) {
+        if (typeof settingUrl === 'string') {
           this.settingUrl = this.baseUrl + settingUrl;
         } else {
-          this.settingUrl = this.baseUrl + 'settings';
+          this.settingUrl = settingUrl;
         }
       }
 
@@ -389,7 +388,13 @@ export class PluginManager implements Initable, Closeable {
 
     const nodeModulesDir = resolve(this.deps.feedengine.rootDir, 'node_modules');
 
-    const pluginNames = (await readdir(nodeModulesDir)).filter((name) => pluginPattern.test(name));
+    const dependencies: Record<string, string> = JSON.parse(
+      await readFile(resolve(this.deps.feedengine.rootDir, 'package.json'), {
+        encoding: 'utf-8',
+      })
+    ).dependencies;
+
+    const pluginNames = Object.keys(dependencies).filter((name) => pluginPattern.test(name));
 
     const hook = new Hook(new Set(pluginNames));
 

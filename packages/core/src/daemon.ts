@@ -1,5 +1,6 @@
 import {ChildProcess, fork} from 'node:child_process';
-import {type Message, MessageType} from './types/ipc.js';
+import type {Message} from './types/ipc.js';
+import {MessageType} from './app.js';
 import process from 'node:process';
 import {dirname} from 'desm';
 import {log} from './utils/log.js';

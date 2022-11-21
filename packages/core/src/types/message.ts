@@ -1,3 +1,5 @@
+import type {NotificationType} from '../message/index.js';
+
 export interface MessageBase {
   channel: string;
 }
@@ -6,12 +8,6 @@ export interface MessageConsumable extends MessageBase {
   consumable: boolean;
   consumed?: boolean;
   id?: string;
-}
-
-export enum NotificationType {
-  'warn' = 'warn',
-  'error' = 'error',
-  'info' = 'info',
 }
 
 export interface ConfimAction {

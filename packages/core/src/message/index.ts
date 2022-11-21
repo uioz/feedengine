@@ -1,7 +1,6 @@
 import {Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {
-  NotificationType,
   ConfirmMessage,
   NotificationMessage,
   ConfimAction,
@@ -10,6 +9,12 @@ import {
   ProgressMessage,
   ProgressHandler,
 } from '../types/message.js';
+
+export enum NotificationType {
+  'warn' = 'warn',
+  'error' = 'error',
+  'info' = 'info',
+}
 
 function isConsumable(data: any): data is MessageConsumable {
   if (data.consumable) {

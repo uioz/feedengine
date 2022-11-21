@@ -14,7 +14,7 @@ createApp({
 })
   .use(
     createVuetify({
-      theme: false,
+      // theme: false,
       blueprint: md3,
       icons: {
         defaultSet: 'md',

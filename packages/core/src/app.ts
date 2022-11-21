@@ -2,7 +2,10 @@ import {TopDeps} from './index.js';
 import type {Initable, Closeable} from './types/index.js';
 import process from 'node:process';
 import {AppSettings, PluginSettings} from './types/settings.js';
-import {MessageType} from './types/ipc.js';
+
+export enum MessageType {
+  'restart',
+}
 
 export const defaultPluginConfig: PluginSettings = {
   maxIo: 1,
@@ -157,7 +160,7 @@ export class AppManager implements Initable, Closeable {
     await this.checkSettings();
 
     if (!this.firstBooting) {
-      await this.deps.driverManager.init();
+      // await this.deps.driverManager.init();
     }
 
     // TODO: schedulerManager And taskManager

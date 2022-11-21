@@ -1,6 +1,7 @@
-export * from './types/index.js';
-import type {PluginOptionsConstructor} from './types/index.js';
+import type {PluginOptionsConstructor} from 'feedengine';
 
-export function definePlugin(options: PluginOptionsConstructor): PluginOptionsConstructor {
+export function definePlugin<IsCorePlugin = false>(
+  options: PluginOptionsConstructor<IsCorePlugin>
+): PluginOptionsConstructor<IsCorePlugin> {
   return options;
 }

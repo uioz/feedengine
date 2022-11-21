@@ -1,6 +1,4 @@
-export enum MessageType {
-  'restart',
-}
+import type {MessageType} from '../app.js';
 
 export interface Message {
   type: MessageType;

@@ -12,6 +12,7 @@ import type {
   ModelStatic,
   Sequelize,
 } from 'sequelize';
+import {PluginState as PS} from '../plugins/index.js';
 
 export interface PluginContext {
   feedengineVersion: string;
@@ -42,8 +43,8 @@ export interface PluginContext {
 }
 
 export interface PluginApp {
-  baseUrl?: string;
-  settingUrl?: string;
+  baseUrl?: string; // 默认 /<pluginName>
+  settingUrl?: string | true; // 提供 true 则表示整个应用都是用于设置的, 不提供仅有 dir(包括 baseurl) 则表示仅提供应用, 提供则相对于 /<pluginName>/<settingUrl>
   type: 'spa' | 'static';
   dir: string;
 }
@@ -63,7 +64,9 @@ export interface PluginOptions {
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface PluginSpaceContext {}
 
-export type PluginOptionsConstructor = (
+export type PluginOptionsConstructor<CorePlugin = boolean> = (
   context: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>,
-  internal?: TopDeps
+  internal: CorePlugin extends true ? TopDeps : undefined
 ) => PluginOptions;
+
+export type PluginState = keyof typeof PS;
