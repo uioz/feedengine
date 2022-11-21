@@ -14,9 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "feedengine-plugin": "workspace:^0.1.0"
-  },
-  "devDependencies": {
-    "sequelize": "^6.25.5"
+    "feedengine-plugin": "workspace:^0.1.0",
+    "sequelize": "^6.25.7"
   }
 }
