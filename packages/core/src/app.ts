@@ -46,8 +46,8 @@ export const defaultAppSettings: AppSettings = {
   },
   driver: {
     headless: false,
-    executablePath: 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe',
-    userDataDir: 'C:\\Users\\zhao\\AppData\\Local\\BraveSoftware\\Brave-Browser\\User Data',
+    executablePath: '',
+    userDataDir: '',
   },
   performance: {
     pagesConcurrency: 10,
