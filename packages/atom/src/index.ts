@@ -17,11 +17,16 @@ export const plugin = definePlugin((context) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
+    uuid: {
+      type: DataTypes.UUIDV4,
+      allowNull: false,
+      defaultValue: DataTypes.UUIDV4,
+      unique: true,
+      primaryKey: true,
+    },
     id: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
-      primaryKey: true,
     },
     author: DataTypes.JSON,
     category: DataTypes.JSON,

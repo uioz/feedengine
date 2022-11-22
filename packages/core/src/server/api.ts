@@ -23,7 +23,8 @@ const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
       await connection.socket.send(JSON.stringify(message));
     };
 
-    connection.socket.once('open', () => messageManager.registerConsumer(send));
+    messageManager.registerConsumer(send);
+
     connection.socket.on('message', (message) => {
       messageManager.consume(JSON.parse(message.toString()).id);
     });

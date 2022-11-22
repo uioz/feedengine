@@ -8,6 +8,7 @@ import {createPinia} from 'pinia';
 import {createVuetify} from 'vuetify';
 import {aliases, md} from 'vuetify/iconsets/md';
 import {md3} from 'vuetify/blueprints';
+import {useMessageStore} from './stores/message';
 
 createApp({
   render: () => h(RouterView),
@@ -28,3 +29,5 @@ createApp({
   .use(createPinia())
   .use(router)
   .mount('#app');
+
+useMessageStore().connect();

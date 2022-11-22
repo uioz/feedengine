@@ -1,7 +1,13 @@
 // refer to http://www.intertwingly.net/wiki/pie/Rss20AndAtom10Compared#x
 // http://www.atomenabled.org/developers/syndication
 // https://datatracker.ietf.org/doc/html/rfc4287
-import type {Model, InferAttributes, InferCreationAttributes} from 'sequelize';
+import type {Model, InferAttributes, InferCreationAttributes, ModelStatic} from 'sequelize';
+
+declare module 'feedengine' {
+  interface PluginSpaceContext {
+    atomModel: ModelStatic<AtomPluginMainTableModel>;
+  }
+}
 
 export interface AtomPerson {
   name: string;
@@ -47,6 +53,7 @@ export interface AtomPluginMainTable {
   read: boolean;
   plugin: string;
   task: string;
+  uuid: string;
   //
   id: string;
   author: Array<AtomAuthor>;

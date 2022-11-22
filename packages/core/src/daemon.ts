@@ -4,16 +4,19 @@ import {MessageType} from './app.js';
 import process from 'node:process';
 import {dirname} from 'desm';
 import {log} from './utils/log.js';
+import {join} from 'node:path';
+
+const rootDir = dirname(import.meta.url);
 
 const debug = log({
-  feedengine: {rootDir: dirname(import.meta.url)},
+  feedengine: {rootDir},
   prod: process.env.NODE_ENV === 'production',
 }).child({
   source: 'daemon',
 });
 
 function createChild() {
-  const cp = fork('./index.js');
+  const cp = fork(join(rootDir, 'index.js'));
 
   return {
     cp,

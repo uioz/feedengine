@@ -1,6 +1,8 @@
 <template>
   <VApp>
-    <VAppBar title="feedengine" density="compact"> </VAppBar>
+    <VAppBar density="compact">
+      <VAppBarTitle class="text-overline">feedengine</VAppBarTitle>
+    </VAppBar>
     <VMain>
       <VContainer>
         <VRow>

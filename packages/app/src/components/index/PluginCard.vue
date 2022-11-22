@@ -1,7 +1,9 @@
 <template>
   <VCard>
     <VToolbar>
-      <VToolbarTitle>{{ `${name}@${version}` }}</VToolbarTitle>
+      <VToolbarTitle class="text-uppercase text-subtitle-2">{{
+        `${name}@${version}`
+      }}</VToolbarTitle>
       <VSpacer></VSpacer>
       <template v-if="app">
         <VBtn v-if="app.settings === undefined" icon="apps" :href="app.url"> </VBtn>
@@ -18,7 +20,6 @@
       color="success"
       indeterminate
     ></v-progress-linear>
-    test
   </VCard>
 </template>
 
