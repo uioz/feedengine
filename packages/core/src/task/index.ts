@@ -69,7 +69,7 @@ export class TaskManager implements Initable, Closeable {
       },
       name: {
         type: DataTypes.STRING,
-        allowNull: false,
+        allowNull: true,
       },
       settings: {
         type: DataTypes.JSON,
@@ -91,7 +91,7 @@ export class TaskManager implements Initable, Closeable {
           ).map((item) => item.plugin)
         );
 
-        const loadedPlugins = new Set(this.pluginManager.plugins.map((item) => item.name));
+        const loadedPlugins = this.pluginManager.pluginSuccessNames;
 
         const outdatedPlugins = [];
 
@@ -150,6 +150,53 @@ export class TaskManager implements Initable, Closeable {
     } else {
       this.buffer.push([pluginName, taskName, options, task]);
     }
+  }
+
+  unRegisterTaskByPlugin(pluginName: string) {
+    if (this.buffer.length) {
+      this.buffer = this.buffer.filter((item) => item[0] !== pluginName);
+    }
+
+    for (const [key, value] of this.allregisteredTask.entries()) {
+      if (value.pluginName === pluginName) {
+        this.allregisteredTask.delete(key);
+      }
+    }
+  }
+
+  async getAllTask(): Promise<Array<TaskTableDefinition>> {
+    // 获取注册中的任务, 根据对应的插件名称过滤后, 同插件同任务的不同任务 id
+    // 在获取运行中的同插件同类型的任务混合到一起得到任务总数与运行中总数
+
+    const tasks = await this.taskModel.findAll();
+
+    return tasks.map((item) => item.dataValues);
+  }
+
+  async getAllTaskSortByPlugin() {
+    const tasks = await this.getAllTask();
+
+    const data: Record<string, Array<{task: string; name?: string; id: number}>> = {};
+
+    for (const {plugin, name, id, task} of tasks) {
+      if (data[plugin]) {
+        data[plugin].push({
+          name,
+          task,
+          id,
+        });
+      } else {
+        data[plugin] = [
+          {
+            name,
+            task,
+            id,
+          },
+        ];
+      }
+    }
+
+    return data;
   }
 
   async close() {

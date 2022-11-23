@@ -1,22 +1,13 @@
 import type {FastifyPluginCallback} from 'fastify';
-import {TopDeps} from '../index.js';
+import {TopDeps} from '../../index.js';
+import websocket from '@fastify/websocket';
 
-const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
+export const messageRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
   fastify,
-  {deps: {appManager, messageManager}},
+  {deps: {messageManager}},
   done
 ) {
-  fastify.get('/restart', (req, res) => {
-    res.status(200).send();
-
-    appManager.restart();
-  });
-
-  fastify.get('/close', (req, res) => {
-    res.status(200).send();
-
-    appManager.close();
-  });
+  fastify.register(websocket as any);
 
   fastify.get('/message', {websocket: true}, (connection) => {
     const send = async (message: any) => {
@@ -34,5 +25,3 @@ const plugin: FastifyPluginCallback<{deps: TopDeps}> = function (
 
   done();
 };
-
-export default plugin;

@@ -1,17 +1,17 @@
 import type {Emitter} from 'mitt';
 import type {PluginSpaceEvent} from './event.js';
-import type {PluginContext, PluginSpaceContext} from './plugin.js';
+import type {PluginContextAPI, PluginSpaceContext} from './plugin.js';
 
 interface Task {
   run(): Promise<void>;
 }
 
 export interface TaskConstructor {
-  new (options: Emitter<PluginSpaceEvent> & PluginContext & PluginSpaceContext): Task;
+  new (options: Emitter<PluginSpaceEvent> & PluginContextAPI & PluginSpaceContext): Task;
 }
 
 export interface TaskRegisterOptions {
-  fastMode?: boolean;
+  immediate?: boolean;
 }
 
 export interface TaskTableDefinition {
@@ -19,6 +19,6 @@ export interface TaskTableDefinition {
   version: string;
   plugin: string;
   task: string;
-  name: string;
+  name?: string;
   settings: unknown;
 }

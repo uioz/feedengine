@@ -1,8 +1,7 @@
 import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {fastify, type FastifyInstance} from 'fastify';
-import websocket from '@fastify/websocket';
-import api from './api.js';
+import {appRoute, messageRoute, pluginRoute} from './api/index.js';
 
 export class ServerManager implements Initable, Closeable {
   deps: TopDeps;
@@ -18,9 +17,17 @@ export class ServerManager implements Initable, Closeable {
       logger: this.log,
     });
 
-    this.server.register(websocket as any);
+    this.server.register(appRoute, {
+      deps,
+      prefix: '/api',
+    });
 
-    this.server.register(api, {
+    this.server.register(messageRoute, {
+      deps,
+      prefix: '/api',
+    });
+
+    this.server.register(pluginRoute, {
       deps,
       prefix: '/api',
     });

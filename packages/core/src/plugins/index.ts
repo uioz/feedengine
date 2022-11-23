@@ -4,12 +4,14 @@ import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {
   PluginOptionsConstructor,
-  PluginContext,
+  PluginContextAPI,
   PluginOptions,
   PluginSpaceEvent,
   PluginSpaceContext,
   PluginLifeCycleProgress,
   ProgressHandler,
+  TaskConstructor,
+  TaskRegisterOptions,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -37,7 +39,7 @@ export class Plugin implements PluginOptions, Initable {
   baseUrl: string;
   plugin!: PluginOptions;
   state: keyof typeof PluginState = PluginState.notReady;
-  context!: PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>;
+  context!: PluginContextAPI & PluginSpaceContext & Emitter<PluginSpaceEvent>;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
   lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
@@ -159,11 +161,13 @@ export class Plugin implements PluginOptions, Initable {
         return this.deps.storageManager.sequelize.define(this.name, attributes, options);
       },
       getSequelize: () => this.deps.storageManager.sequelize,
+      registerTask: (taskName: string, task: TaskConstructor, options: TaskRegisterOptions = {}) =>
+        this.deps.taskManager.register(this.name, taskName, options, task),
     };
 
     const eventBus = this.eventBus;
 
-    this.context = new Proxy<PluginContext & PluginSpaceContext & Emitter<PluginSpaceEvent>>(
+    this.context = new Proxy<PluginContextAPI & PluginSpaceContext & Emitter<PluginSpaceEvent>>(
       context as any,
       {
         get(obj, prop) {
@@ -331,6 +335,10 @@ export class Plugin implements PluginOptions, Initable {
       })
       .end();
 
+    this.deps.pluginManager.pluginFailedNames.add(this.name);
+
+    this.deps.taskManager.unRegisterTaskByPlugin(this.name);
+
     this.context.window.confirm.error(error + '', [
       {
         label: 'restart',
@@ -338,7 +346,9 @@ export class Plugin implements PluginOptions, Initable {
         payload: '/api/restart',
       },
     ]);
+
     this.context.log.error(error);
+
     if (destory) {
       this.onDispose();
     }
@@ -375,6 +385,8 @@ class Hook extends EventEmitter {
 
 export class PluginManager implements Initable, Closeable {
   plugins: Array<Plugin> = [];
+  pluginSuccessNames = new Set<string>();
+  pluginFailedNames = new Set<string>();
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
 
@@ -416,10 +428,22 @@ export class PluginManager implements Initable, Closeable {
           throw new Error(`the ${pluginName} doesn't have named export of plugin`);
         } catch (error) {
           this.log.warn(`load plugin ${pluginName} failed reason: ${error}`);
+
+          (error as any).pluginName = pluginName;
+
           throw error;
         }
       })
     );
+
+    for (const plugin of plugins) {
+      if (plugin.status === 'fulfilled') {
+        this.plugins.push(plugin.value);
+        this.pluginSuccessNames.add(plugin.value.name);
+      } else {
+        this.pluginFailedNames.add(plugin.reason.pluginName);
+      }
+    }
 
     this.plugins = plugins
       .filter((item) => item.status === 'fulfilled')
