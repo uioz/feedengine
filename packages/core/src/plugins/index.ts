@@ -444,10 +444,6 @@ export class PluginManager implements Initable, Closeable {
         this.pluginFailedNames.add(plugin.reason.pluginName);
       }
     }
-
-    this.plugins = plugins
-      .filter((item) => item.status === 'fulfilled')
-      .map((item) => (item as PromiseFulfilledResult<Plugin>).value);
   }
 
   async init() {
