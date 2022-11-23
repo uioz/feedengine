@@ -1,13 +1,13 @@
 import {TopDeps} from './index.js';
 import type {Initable, Closeable} from './types/index.js';
 import process from 'node:process';
-import {AppSettings, PluginSettings} from './types/settings.js';
+import {AppSettings, PluginPerformanceSettings} from './types/settings.js';
 
 export enum MessageType {
   'restart',
 }
 
-export const defaultPluginConfig: PluginSettings = {
+export const defaultPluginConfig: PluginPerformanceSettings = {
   maxIo: 1,
   maxTask: 1,
 };
@@ -153,17 +153,19 @@ export class AppManager implements Initable, Closeable {
   async init() {
     this.log.info(`init`);
 
-    await Promise.all([this.deps.pluginManager.init(), this.deps.storageManager.init()]);
+    await this.deps.pluginManager.init();
 
-    await this.deps.settingManager.init();
+    await Promise.all([
+      this.deps.storageManager.init(),
+      this.deps.settingManager.init(),
+      this.deps.taskManager.init(),
+    ]);
 
     await this.checkSettings();
 
     if (!this.firstBooting) {
       // await this.deps.driverManager.init();
     }
-
-    // TODO: schedulerManager And taskManager
 
     this.deps.pluginManager.create();
 

@@ -1,15 +1,15 @@
 import type {TopDeps} from '../index.js';
 import {DataTypes, InferAttributes, InferCreationAttributes, Model, ModelStatic} from 'sequelize';
-import type {Initable, PluginSetting} from '../types/index.js';
+import type {Initable, PluginSettings} from '../types/index.js';
 
 interface PluginSettingModel
-  extends PluginSetting,
+  extends PluginSettings,
     Model<InferAttributes<PluginSettingModel>, InferCreationAttributes<PluginSettingModel>> {}
 
 export class SettingManager implements Initable {
   storageManager: TopDeps['storageManager'];
   log: TopDeps['log'];
-  pluginSettings: ModelStatic<PluginSettingModel>;
+  pluginSettingsModel: ModelStatic<PluginSettingModel>;
   pluginSettingCache = new Map<string, any>();
   prod: boolean;
 
@@ -20,7 +20,7 @@ export class SettingManager implements Initable {
 
     this.log = log.child({source: SettingManager.name});
 
-    this.pluginSettings = this.storageManager.sequelize.define<PluginSettingModel>(
+    this.pluginSettingsModel = this.storageManager.sequelize.define<PluginSettingModel>(
       'PluginSettings',
       {
         name: {
@@ -42,23 +42,23 @@ export class SettingManager implements Initable {
   }
 
   async init() {
-    await this.pluginSettings.sync();
+    await this.pluginSettingsModel.sync();
 
     this.log.info(`init`);
   }
 
-  async getPluginSettings<T>(name: string): Promise<PluginSetting<T> | null> {
+  async getPluginSettings<T>(name: string): Promise<PluginSettings<T> | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
     }
 
-    const result = await this.pluginSettings.findByPk<PluginSettingModel>(name);
+    const result = await this.pluginSettingsModel.findByPk<PluginSettingModel>(name);
 
     return result?.dataValues ?? null;
   }
 
-  async setPluginSettings<T>(settings: PluginSetting<T>) {
-    await this.pluginSettings.upsert(settings);
+  async setPluginSettings<T>(settings: PluginSettings<T>) {
+    await this.pluginSettingsModel.upsert(settings);
 
     this.pluginSettingCache.set(settings.name, settings);
   }

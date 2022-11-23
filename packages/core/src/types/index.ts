@@ -1,4 +1,4 @@
-export * from './atom.js';
+export * from './task.js';
 export * from './ipc.js';
 export * from './message.js';
 export * from './plugin.js';

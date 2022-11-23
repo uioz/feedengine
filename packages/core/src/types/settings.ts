@@ -1,4 +1,4 @@
-export interface PluginSettings {
+export interface PluginPerformanceSettings {
   maxIo: number; // 1 by default
   maxTask: number; // 1 by default
 }
@@ -17,11 +17,11 @@ export interface AppSettings {
     pagesConcurrency: number; // 10 by default
     ioConcurrency: number; // 10 by default
     taskConcurrency: number; // 1 by default
-    plugins: Array<PluginSettings & {name: string}>;
+    plugins: Array<PluginPerformanceSettings & {name: string}>;
   };
 }
 
-export interface PluginSetting<T = any> {
+export interface PluginSettings<T = any> {
   name: string;
   version: string;
   settings: T;

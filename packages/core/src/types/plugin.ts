@@ -1,5 +1,5 @@
 import type {Logger} from 'pino';
-import {ConfimAction, PluginSetting} from '../types/index.js';
+import {ConfimAction, PluginSettings} from '../types/index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -33,7 +33,7 @@ export interface PluginContext {
   };
   exit(): void;
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
-  getSettings<T>(): Promise<PluginSetting<T> | null>;
+  getSettings<T>(): Promise<PluginSettings<T> | null>;
   setSettings(setting: unknown): Promise<void>;
   getMainModel<M extends Model, TAttributes = Attributes<M>>(
     attributes: ModelAttributes<M, TAttributes>,
