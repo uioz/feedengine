@@ -6,7 +6,7 @@
       }}</VToolbarTitle>
       <VSpacer></VSpacer>
       <template v-if="app">
-        <VBtn v-if="app.settings === undefined" icon="apps" :href="app.url"> </VBtn>
+        <VBtn v-if="app.url || app.settings === undefined" icon="apps" :href="app.url"> </VBtn>
         <VBtn
           v-if="app.settings"
           icon="settings"
@@ -24,12 +24,12 @@
 </template>
 
 <script setup lang="ts">
-import {PluginState} from '~/index';
+import type {PluginStateApi} from 'feedengine';
 
 defineProps<{
-  name: PluginState['name'];
-  version: PluginState['version'];
-  state: PluginState['state'];
-  app?: PluginState['app'];
+  name: PluginStateApi['name'];
+  version: PluginStateApi['version'];
+  state: PluginStateApi['state'];
+  app?: PluginStateApi['app'];
 }>();
 </script>
