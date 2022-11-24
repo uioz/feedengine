@@ -6,8 +6,8 @@ export interface PluginStateApi {
   state: PS;
   task: Array<{
     task: string;
-    name?: string;
-    id: number;
+    taskCount: number;
+    working: number;
   }>;
   app?: {
     url: string;

@@ -8,7 +8,14 @@ import type {
   TaskTableDefinition,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
-import {Model, InferAttributes, InferCreationAttributes, DataTypes, ModelStatic} from 'sequelize';
+import {
+  Model,
+  InferAttributes,
+  InferCreationAttributes,
+  DataTypes,
+  ModelStatic,
+  QueryTypes,
+} from 'sequelize';
 
 interface TaskMeta {
   options: TaskRegisterOptions;
@@ -22,11 +29,13 @@ interface TaskModel
   extends TaskTableDefinition,
     Model<InferAttributes<TaskModel>, InferCreationAttributes<TaskModel>> {}
 
+const taskTableName = 'task';
+
 export class TaskManager implements Initable, Closeable {
   log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
   pluginManager: TopDeps['pluginManager'];
-  settingManager: TopDeps['settingManager'];
+  appManager: TopDeps['appManager'];
   feedengineMeta: TopDeps['feedengine'];
   allregisteredTask = new Map<string, TaskMeta>();
   performance!: AppSettings['performance'];
@@ -38,17 +47,17 @@ export class TaskManager implements Initable, Closeable {
     log,
     messageManager,
     pluginManager,
-    settingManager,
+    appManager,
     feedengine,
     storageManager,
   }: TopDeps) {
     this.log = log.child({source: TaskManager.name});
     this.messageManager = messageManager;
     this.pluginManager = pluginManager;
-    this.settingManager = settingManager;
+    this.appManager = appManager;
     this.feedengineMeta = feedengine;
 
-    this.taskModel = storageManager.sequelize.define<TaskModel>('task', {
+    this.taskModel = storageManager.sequelize.define<TaskModel>(taskTableName, {
       id: {
         type: DataTypes.INTEGER,
         autoIncrement: true,
@@ -78,8 +87,8 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async init() {
-    const [AppSettings] = await Promise.all([
-      this.settingManager.getPluginSettings<AppSettings>(this.feedengineMeta.name),
+    const [performance] = await Promise.all([
+      this.appManager.getPerformance(),
       (async () => {
         await this.taskModel.sync();
 
@@ -91,12 +100,13 @@ export class TaskManager implements Initable, Closeable {
           ).map((item) => item.plugin)
         );
 
-        const loadedPlugins = this.pluginManager.pluginSuccessNames;
-
         const outdatedPlugins = [];
 
         for (const pluginInDb of pluginsInDb) {
-          if (!loadedPlugins.has(pluginInDb)) {
+          if (
+            !this.pluginManager.pluginSuccessNames.has(pluginInDb) &&
+            !this.pluginManager.pluginFailedNames.has(pluginInDb)
+          ) {
             outdatedPlugins.push(pluginInDb);
           }
         }
@@ -111,7 +121,7 @@ export class TaskManager implements Initable, Closeable {
       })(),
     ]);
 
-    this.performance = AppSettings!.settings.performance;
+    this.performance = performance;
 
     this.isReady = true;
 
@@ -165,38 +175,36 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async getAllTask(): Promise<Array<TaskTableDefinition>> {
-    // 获取注册中的任务, 根据对应的插件名称过滤后, 同插件同任务的不同任务 id
-    // 在获取运行中的同插件同类型的任务混合到一起得到任务总数与运行中总数
-
     const tasks = await this.taskModel.findAll();
 
     return tasks.map((item) => item.dataValues);
   }
 
-  async getAllTaskSortByPlugin() {
-    const tasks = await this.getAllTask();
+  async getAllTaskStateGroupByPlugin() {
+    const result = await this.taskModel.sequelize!.query<{
+      plugin: string;
+      task: string;
+      taskCount: number;
+    }>(
+      `SELECT plugin, task, COUNT(task) AS taskCount FROM ${taskTableName} AS test GROUP BY plugin, task`,
+      {type: QueryTypes.SELECT}
+    );
 
-    const data: Record<string, Array<{task: string; name?: string; id: number}>> = {};
+    const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
 
-    for (const {plugin, name, id, task} of tasks) {
-      if (data[plugin]) {
-        data[plugin].push({
-          name,
-          task,
-          id,
+    for (const {plugin, task, taskCount} of result) {
+      if (temp[plugin]) {
+        temp[plugin].push({
+          task: task,
+          taskCount: taskCount,
+          working: 0, // TOOD: 与正在执行中的任务进行混合
         });
       } else {
-        data[plugin] = [
-          {
-            name,
-            task,
-            id,
-          },
-        ];
+        temp[plugin] = [{task, taskCount, working: 0}];
       }
     }
 
-    return data;
+    return temp;
   }
 
   async close() {

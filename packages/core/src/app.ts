@@ -122,6 +122,18 @@ export class AppManager implements Initable, Closeable {
     throw new Error('app settings was missing');
   }
 
+  async getPerformance() {
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
+      this.deps.feedengine.name
+    );
+
+    if (result) {
+      return result.settings.performance;
+    }
+
+    throw new Error('app settings was missing');
+  }
+
   async restart() {
     await this.close();
 
@@ -158,10 +170,10 @@ export class AppManager implements Initable, Closeable {
     await Promise.all([
       this.deps.storageManager.init(),
       this.deps.settingManager.init(),
-      this.deps.taskManager.init(),
+      this.checkSettings(),
     ]);
 
-    await this.checkSettings();
+    await this.deps.taskManager.init();
 
     if (!this.firstBooting) {
       // await this.deps.driverManager.init();

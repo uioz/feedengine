@@ -7,7 +7,7 @@ export const pluginRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
   done
 ) {
   fastify.get<{Reply: Array<PluginStateApi>}>('/plugins/state', async (req, res) => {
-    const allTasks = await taskManager.getAllTaskSortByPlugin();
+    const allTasks = await taskManager.getAllTaskStateGroupByPlugin();
 
     return res.status(200).send(
       pluginManager.plugins.map(({name, version, dir, baseUrl, settingUrl, state}) => {

@@ -54,6 +54,10 @@ export class SettingManager implements Initable {
 
     const result = await this.pluginSettingsModel.findByPk<PluginSettingModel>(name);
 
+    if (result) {
+      this.pluginSettingCache.set(name, result.dataValues);
+    }
+
     return result?.dataValues ?? null;
   }
 
