@@ -1,5 +1,6 @@
 import type {FastifyPluginCallback} from 'fastify';
 import {TopDeps, PluginStateApi} from '../../index.js';
+import {PluginState} from '../../plugins/index.js';
 
 export const pluginRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
   fastify,
@@ -10,11 +11,11 @@ export const pluginRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
     const allTasks = await taskManager.getAllTaskStateGroupByPlugin();
 
     return res.status(200).send(
-      pluginManager.plugins.map(({name, version, dir, baseUrl, settingUrl, state}) => {
+      pluginManager.loadedPlugins.map(({name, version, dir, baseUrl, settingUrl, state}) => {
         const temp: PluginStateApi = {
           name,
           version,
-          state,
+          state: PluginState[state] as never,
           task: allTasks[name] ?? [],
         };
 

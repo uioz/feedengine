@@ -22,11 +22,12 @@ import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 import {NotificationType} from '../message/index.js';
 
 export enum PluginState {
-  notReady = 'notReady',
-  onCreate = 'onCreate',
-  onActive = 'onActive',
-  onDispose = 'onDispose',
-  error = 'error',
+  ready,
+  init,
+  created,
+  actived,
+  disposed,
+  error,
 }
 
 const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin']);
@@ -39,7 +40,7 @@ export class Plugin implements PluginOptions, Initable {
   settingUrl?: string | true;
   baseUrl: string;
   plugin!: PluginOptions;
-  state: keyof typeof PluginState = PluginState.notReady;
+  #state = PluginState.ready;
   context!: PluginContext;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
@@ -52,7 +53,8 @@ export class Plugin implements PluginOptions, Initable {
     private nodeModulesDir: string,
     private deps: TopDeps,
     private hook: Hook,
-    private store: PluginContextStore
+    public store: PluginContextStore,
+    private pluginStates: Map<PluginState, Set<string>>
   ) {
     if (builtinPlugins.has(name)) {
       this.baseUrl = '/';
@@ -60,9 +62,23 @@ export class Plugin implements PluginOptions, Initable {
       this.baseUrl = `/${name}/`;
     }
 
-    hook.once('allSettled', () => this.onActive());
+    hook.once(`all-${PluginState[PluginState.created]}`, () => this.onActive());
 
     this.lifecycleProgress = this.deps.messageManager.progress(name);
+  }
+
+  public get state(): PluginState {
+    return this.#state;
+  }
+
+  public set state(v: PluginState) {
+    this.pluginStates.get(this.#state)?.delete(this.name);
+
+    this.pluginStates.get(v)?.add(this.name);
+
+    this.#state = v;
+
+    this.hook.emit(PluginState[v], this.name);
   }
 
   private registerFastifyPlugin() {
@@ -71,14 +87,14 @@ export class Plugin implements PluginOptions, Initable {
         root: this.dir,
         wildcard: false,
         prefix: this.baseUrl,
-        allowedPath: () => this.state === PluginState.onActive,
+        allowedPath: () => this.state === PluginState.actived,
       });
     }
 
     if (this.fastifyPluginRegister) {
       this.deps.serverManager.server.register((fastify, opts, done) => {
         fastify.addHook('onRequest', (req, res, done) => {
-          if (this.state === PluginState.onActive) {
+          if (this.state === PluginState.actived) {
             done();
           } else {
             res.code(500).send();
@@ -143,7 +159,7 @@ export class Plugin implements PluginOptions, Initable {
         this.eventBus.off(key, handler);
       },
       registerFastifyPlugin: (callback: FastifyPluginCallback<any>) => {
-        if (this.state !== PluginState.notReady) {
+        if (this.state !== PluginState.ready) {
           throw new Error('the register only works before any hooks execution');
         }
 
@@ -168,7 +184,7 @@ export class Plugin implements PluginOptions, Initable {
         task: TaskConstructor<T>,
         options?: TaskConstructorOptions
       ) => {
-        if (this.state !== PluginState.notReady) {
+        if (this.state !== PluginState.ready) {
           throw new Error('the register only works before any hooks execution');
         }
 
@@ -213,8 +229,9 @@ export class Plugin implements PluginOptions, Initable {
       }
 
       this.plugin = plugin;
+
+      this.state = PluginState.init;
     } catch (error) {
-      this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
 
@@ -222,8 +239,6 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   async onCreate() {
-    this.state = PluginState.onCreate;
-
     this.lifecycleProgress.send({
       state: 'create',
     });
@@ -237,13 +252,13 @@ export class Plugin implements PluginOptions, Initable {
             const namesThatNeedToWatch = new Set();
 
             for (const targetName of pluginNames) {
-              if (!hook.pluginNames.has(targetName)) {
+              if (!hook.loadedPluginsNames.has(targetName)) {
                 return reject(new Error(`There's no plugin called ${targetName}`));
               }
-              if (hook.pluginThatError.has(targetName)) {
+              if (hook.pluginStates.get(PluginState.error)!.has(targetName)) {
                 return reject(new Error(`loading plugin ${targetName} was failed`));
               }
-              if (!hook.pluginThatCreated.has(targetName)) {
+              if (!hook.pluginStates.get(PluginState.created)!.has(targetName)) {
                 namesThatNeedToWatch.add(targetName);
               }
             }
@@ -257,26 +272,26 @@ export class Plugin implements PluginOptions, Initable {
                 namesThatNeedToWatch.delete(name);
                 if (namesThatNeedToWatch.size === 0) {
                   resolve();
-                  hook.removeListener('created', createdHandler);
+                  hook.removeListener(PluginState[PluginState.created], createdHandler);
                 }
               }
             };
 
-            hook.on('created', createdHandler);
+            hook.on(PluginState[PluginState.created], createdHandler);
 
             const errorHandler = (name: string) => {
               if (namesThatNeedToWatch.has(name)) {
                 reject(new Error(`loading plugin ${name} was failed`));
-                hook.removeListener('error', errorHandler);
+                hook.removeListener(PluginState[PluginState.error], errorHandler);
               }
             };
 
-            hook.on('error', errorHandler);
+            hook.on(PluginState[PluginState.error], errorHandler);
           }),
       });
-      this.hook.emit('created', this.name);
+
+      this.state = PluginState.created;
     } catch (error) {
-      this.hook.emit('error', this.name);
       this.errorHandler(error);
     }
 
@@ -284,33 +299,43 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   onActive() {
-    this.state = PluginState.onActive;
-
     this.lifecycleProgress.send({
       state: 'active',
     });
 
     try {
       this.plugin.onActive?.();
+      this.state = PluginState.actived;
     } catch (error) {
       this.errorHandler(error);
     }
 
     this.lifecycleProgress.end();
+
     this.context.log.info('onActive');
   }
 
   async onDispose() {
-    this.state = PluginState.onDispose;
+    if (this.state !== PluginState.error) {
+      this.state = PluginState.disposed;
+    }
 
     try {
-      // TODO: 清空可能挂载的所有资源
+      // TODO: 清空 store 上挂载的资源
       for (const [key, sets] of this.eventListener.entries()) {
         for (const handler of sets) {
           this.eventBus.off(key, handler);
         }
         this.eventListener.delete(key);
       }
+
+      this.lifecycleProgress
+        .send({
+          state: 'close',
+        })
+        .end();
+
+      this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
       await this.plugin.onDispose?.();
     } catch (error) {
@@ -321,6 +346,8 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   private errorHandler(error: unknown, destory = true) {
+    this.context.log.error(error);
+
     this.state = PluginState.error;
 
     this.lifecycleProgress
@@ -328,12 +355,6 @@ export class Plugin implements PluginOptions, Initable {
         state: 'error',
       })
       .end();
-
-    this.deps.pluginManager.successPlugins.delete(this.name);
-
-    this.deps.pluginManager.faliedPlugins.add(this.name);
-
-    this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
     this.context.window.confirm.error(error + '', [
       {
@@ -343,8 +364,6 @@ export class Plugin implements PluginOptions, Initable {
       },
     ]);
 
-    this.context.log.error(error);
-
     if (destory) {
       this.onDispose();
     }
@@ -352,41 +371,51 @@ export class Plugin implements PluginOptions, Initable {
 }
 
 class Hook extends EventEmitter {
-  pluginThatCreated = new Set<string>();
-  pluginThatError = new Set<string>();
-
-  constructor(public pluginNames: Set<string>) {
+  constructor(
+    public loadedPluginsNames: Set<string>,
+    public pluginStates: Map<PluginState, Set<string>>
+  ) {
     super();
 
-    const isPluginCreatedStateCompleted = () => {
-      if (this.pluginThatCreated.size + this.pluginThatError.size === this.pluginNames.size) {
+    const getAmnoutOfNormallyPlugin = () =>
+      this.loadedPluginsNames.size -
+      (this.pluginStates.get(PluginState.error)!.size +
+        this.pluginStates.get(PluginState.disposed)!.size);
+
+    this.on(PluginState[PluginState.created], () => {
+      const amnoutOfNormallyPlugin = getAmnoutOfNormallyPlugin();
+
+      if (this.pluginStates.get(PluginState.created)!.size === amnoutOfNormallyPlugin) {
+        setImmediate(() => this.emit(`all-${PluginState[PluginState.created]}`));
+      }
+    });
+
+    this.on(PluginState[PluginState.actived], () => {
+      const amnoutOfNormallyPlugin = getAmnoutOfNormallyPlugin();
+
+      if (this.pluginStates.get(PluginState.actived)!.size === amnoutOfNormallyPlugin) {
         setImmediate(() => {
-          this.emit('allSettled');
+          this.emit(`all-${PluginState[PluginState.actived]}`);
           this.removeAllListeners();
         });
       }
-    };
-
-    this.on('error', (name) => {
-      this.pluginThatError.add(name);
-      isPluginCreatedStateCompleted();
-    });
-
-    this.on('created', (name) => {
-      this.pluginThatCreated.add(name);
-      isPluginCreatedStateCompleted();
     });
   }
 }
 
 export class PluginManager implements Initable, Closeable {
-  plugins: Array<Plugin> = [];
-  successPlugins = new Set<string>();
-  faliedPlugins = new Set<string>();
+  loadedPlugins: Array<Plugin> = [];
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
   postInit: Array<() => void> = [];
   store: PluginContextStore = {};
+  pluginStates = new Map<PluginState, Set<string>>([
+    [PluginState.init, new Set()],
+    [PluginState.created, new Set()],
+    [PluginState.actived, new Set()],
+    [PluginState.disposed, new Set()],
+    [PluginState.error, new Set()],
+  ]);
 
   constructor(private deps: TopDeps) {
     this.log = deps.log.child({source: PluginManager.name});
@@ -404,52 +433,48 @@ export class PluginManager implements Initable, Closeable {
       })
     ).dependencies;
 
-    const pluginNames = Object.keys(dependencies).filter((name) => pluginPattern.test(name));
+    const pluginsInDeps = Object.keys(dependencies).filter((name) => pluginPattern.test(name));
 
-    const hook = new Hook(new Set(pluginNames));
+    const loadedPluginNamesSet: Set<string> = new Set();
 
-    const plugins = await Promise.allSettled(
-      pluginNames.map(async (pluginName) => {
-        try {
-          const {plugin} = (await import(pluginName)) as {plugin: PluginOptionsConstructor};
+    const hook = new Hook(loadedPluginNamesSet, this.pluginStates);
 
-          if (plugin) {
-            this.log.info(`load plugin ${pluginName}`);
+    hook.once(`all-${PluginState[PluginState.actived]}`, () => this.deps.scheduleManager.active());
 
-            const p = new Plugin(
-              plugin,
-              context,
-              pluginName,
-              nodeModulesDir,
-              this.deps,
-              hook,
-              this.store
-            );
+    this.loadedPlugins = (
+      await Promise.all(
+        pluginsInDeps.map(async (pluginName) => {
+          try {
+            const {plugin} = (await import(pluginName)) as {plugin: PluginOptionsConstructor};
 
-            await p.init();
+            if (plugin) {
+              this.log.info(`load plugin ${pluginName}`);
 
-            return p;
+              const p = new Plugin(
+                plugin,
+                context,
+                pluginName,
+                nodeModulesDir,
+                this.deps,
+                hook,
+                this.store,
+                this.pluginStates
+              );
+
+              return p;
+            }
+
+            throw new Error(`the ${pluginName} doesn't have named export of plugin`);
+          } catch (error) {
+            this.log.warn(`load plugin ${pluginName} failed reason: ${error}`);
           }
+        })
+      )
+    ).filter((item) => item !== undefined) as Array<Plugin>;
 
-          throw new Error(`the ${pluginName} doesn't have named export of plugin`);
-        } catch (error) {
-          this.log.warn(`load plugin ${pluginName} failed reason: ${error}`);
+    this.loadedPlugins.forEach(({name}) => loadedPluginNamesSet.add(name));
 
-          (error as any).pluginName = pluginName;
-
-          throw error;
-        }
-      })
-    );
-
-    for (const plugin of plugins) {
-      if (plugin.status === 'fulfilled') {
-        this.plugins.push(plugin.value);
-        this.successPlugins.add(plugin.value.name);
-      } else {
-        this.faliedPlugins.add(plugin.reason.pluginName);
-      }
-    }
+    await Promise.all(this.loadedPlugins.map((plugin) => plugin.init()));
   }
 
   async init() {
@@ -463,8 +488,8 @@ export class PluginManager implements Initable, Closeable {
   }
 
   create() {
-    for (const plugin of this.plugins) {
-      if (plugin.state !== PluginState.error) {
+    for (const plugin of this.loadedPlugins) {
+      if (plugin.state === PluginState.init) {
         plugin.onCreate();
       }
     }
@@ -472,8 +497,8 @@ export class PluginManager implements Initable, Closeable {
 
   async close() {
     await Promise.all(
-      this.plugins
-        .filter((item) => item.state === PluginState.onActive)
+      this.loadedPlugins
+        .filter((item) => item.state === PluginState.actived)
         .map((plugin) => () => plugin.onDispose())
     );
 

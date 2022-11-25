@@ -88,30 +88,28 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async init() {
-    // TODO: 由于我们只列出那些注册完成的任务
-    // 剔除数据库中无效的字段的工作没有必要一开始完成
-    // 可以将其注册为内置任务定时完成
+    // TODO: 不在移除失效的插件对应的任务, 避免插件卸载用于调试目的的情况下误将之前的配置删除
+    // 提供内置任务设计, 修建的操作改为手动执行
     const [performance] = await Promise.all([
       this.appManager.getPerformance(),
       (async () => {
         await this.taskModel.sync();
 
-        const pluginsInDb = new Set(
-          (
-            await this.taskModel.findAll({
-              attributes: ['plugin'],
-            })
-          ).map((item) => item.plugin)
-        );
+        const pluginNamesInDb = (
+          await this.taskModel.findAll({
+            attributes: ['plugin'],
+          })
+        ).map((item) => item.plugin);
 
         const outdatedPlugins = [];
 
-        for (const pluginInDb of pluginsInDb) {
+        for (const pluginNameInDb of pluginNamesInDb) {
           if (
-            !this.pluginManager.successPlugins.has(pluginInDb) &&
-            !this.pluginManager.faliedPlugins.has(pluginInDb)
+            this.pluginManager.loadedPlugins.findIndex(
+              (plugin) => plugin.name === pluginNameInDb
+            ) === -1
           ) {
-            outdatedPlugins.push(pluginInDb);
+            outdatedPlugins.push(pluginNameInDb);
           }
         }
 
@@ -213,6 +211,6 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async close() {
-    //
+    this.log.info('close');
   }
 }

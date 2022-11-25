@@ -44,7 +44,7 @@ export interface TaskConstructorOptions {
   /**
    * markdown support
    */
-  introduction?: string;
+  description?: string;
   link?: string;
 }
 

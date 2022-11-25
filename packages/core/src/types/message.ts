@@ -42,7 +42,7 @@ export interface ProgressMessage extends MessageBase {
 }
 
 export interface PluginLifeCycleProgress extends ProgressMessage {
-  state: 'init' | 'create' | 'active' | 'error';
+  state: 'init' | 'create' | 'active' | 'error' | 'close';
 }
 
 export interface ProgressHandler<T extends ProgressMessage> {

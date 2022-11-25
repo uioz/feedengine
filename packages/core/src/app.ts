@@ -85,13 +85,17 @@ export class AppManager implements Initable, Closeable {
         settings: defaultAppSettings,
       };
 
-      settings.settings.performance.plugins = this.deps.pluginManager.plugins.map(({name}) => ({
-        name,
-        ...defaultPluginConfig,
-      }));
+      settings.settings.performance.plugins = this.deps.pluginManager.loadedPlugins.map(
+        ({name}) => ({
+          name,
+          ...defaultPluginConfig,
+        })
+      );
 
       await this.deps.settingManager.setPluginSettings(settings);
-    } else if (diffPluginsSetting(result.settings.performance, this.deps.pluginManager.plugins)) {
+    } else if (
+      diffPluginsSetting(result.settings.performance, this.deps.pluginManager.loadedPlugins)
+    ) {
       this.log.info(`settings.performence was pruned`);
 
       await this.deps.settingManager.setPluginSettings(result);
@@ -168,9 +172,11 @@ export class AppManager implements Initable, Closeable {
     await Promise.all([
       this.deps.storageManager.init(),
       this.deps.settingManager.init(),
+      this.deps.scheduleManager.init(),
       this.checkSettings(),
     ]);
 
+    // rely on appMananger.settings
     await this.deps.taskManager.init();
 
     if (!this.firstBooting) {

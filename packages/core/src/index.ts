@@ -10,6 +10,7 @@ import {DriverManager} from './driver/index.js';
 import {MessageManager} from './message/index.js';
 import {log, type Log} from './utils/log.js';
 import {TaskManager} from './task/index.js';
+import {ScheduleManager} from './schedule/index.js';
 import {env} from 'node:process';
 
 const feedengine = await findRootDir();
@@ -23,6 +24,7 @@ export interface TopDeps {
   driverManager: DriverManager;
   messageManager: MessageManager;
   taskManager: TaskManager;
+  scheduleManager: ScheduleManager;
   feedengine: {
     rootDir: string;
     name: string;
@@ -43,6 +45,7 @@ contaienr.register({
   driverManager: asClass(DriverManager).singleton(),
   messageManager: asClass(MessageManager).singleton(),
   taskManager: asClass(TaskManager).singleton(),
+  scheduleManager: asClass(ScheduleManager).singleton(),
   log: asFunction(log).singleton(),
   feedengine: asValue(feedengine),
   prod: asValue(env.NODE_ENV === 'production'),
