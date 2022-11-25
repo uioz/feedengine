@@ -7,7 +7,6 @@ import {StorageManager} from './storage/index.js';
 import {SettingManager} from './storage/setting.js';
 import {ServerManager} from './server/index.js';
 import {DriverManager} from './driver/index.js';
-import {eventBus, type Eventbus} from './event/index.js';
 import {MessageManager} from './message/index.js';
 import {log, type Log} from './utils/log.js';
 import {TaskManager} from './task/index.js';
@@ -22,7 +21,6 @@ export interface TopDeps {
   settingManager: SettingManager;
   serverManager: ServerManager;
   driverManager: DriverManager;
-  eventBus: Eventbus;
   messageManager: MessageManager;
   taskManager: TaskManager;
   feedengine: {
@@ -43,7 +41,6 @@ contaienr.register({
   settingManager: asClass(SettingManager).singleton(),
   serverManager: asClass(ServerManager).singleton(),
   driverManager: asClass(DriverManager).singleton(),
-  eventBus: asValue(eventBus),
   messageManager: asClass(MessageManager).singleton(),
   taskManager: asClass(TaskManager).singleton(),
   log: asFunction(log).singleton(),

@@ -216,7 +216,12 @@ export class Plugin implements PluginOptions, Initable {
         }
       }
 
-      this.registerFastifyPlugin();
+      // feedengine-app-plugin 默认使用 / 作为 baseUrl
+      // 如果先于其他插件注册到 fastify 会覆盖其他插件的路由
+      // 因为 feedengine-app-plugin 会拦截一切非文件的请求响应 index.html
+      if (this.name === 'feedengine-app-plugin') {
+        this.deps.pluginManager.postInit.push(() => this.registerFastifyPlugin());
+      }
 
       this.plugin = plugin;
     } catch (error) {
@@ -389,6 +394,7 @@ export class PluginManager implements Initable, Closeable {
   pluginFailedNames = new Set<string>();
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
+  postInit: Array<() => void> = [];
 
   constructor(private deps: TopDeps) {
     this.log = deps.log.child({source: PluginManager.name});
@@ -448,6 +454,10 @@ export class PluginManager implements Initable, Closeable {
 
   async init() {
     await this.loadPlugins();
+
+    this.postInit.forEach((post) => post());
+
+    this.postInit = [];
 
     this.log.info(`init`);
   }

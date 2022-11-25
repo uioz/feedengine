@@ -85,6 +85,9 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async init() {
+    // TODO: 由于我们只列出那些注册完成的任务
+    // 剔除数据库中无效的字段的工作没有必要一开始完成
+    // 可以将其注册为内置任务定时完成
     const [performance] = await Promise.all([
       this.appManager.getPerformance(),
       (async () => {
@@ -166,12 +169,14 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async getAllTask(): Promise<Array<TaskTableDefinition>> {
+    // TODO: 内存查询->数据库查询
     const tasks = await this.taskModel.findAll();
 
     return tasks.map((item) => item.dataValues);
   }
 
   async getAllTaskStateGroupByPlugin() {
+    // TODO: 内存查询->数据库查询
     const result = await this.taskModel.sequelize!.query<{
       plugin: string;
       task: string;

@@ -157,8 +157,6 @@ export class AppManager implements Initable, Closeable {
 
     await this.deps.storageManager.close();
 
-    this.deps.eventBus.all.clear();
-
     this.log.info(`close`);
   }
 
