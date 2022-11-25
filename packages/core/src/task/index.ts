@@ -105,8 +105,8 @@ export class TaskManager implements Initable, Closeable {
 
         for (const pluginInDb of pluginsInDb) {
           if (
-            !this.pluginManager.pluginSuccessNames.has(pluginInDb) &&
-            !this.pluginManager.pluginFailedNames.has(pluginInDb)
+            !this.pluginManager.successPlugins.has(pluginInDb) &&
+            !this.pluginManager.faliedPlugins.has(pluginInDb)
           ) {
             outdatedPlugins.push(pluginInDb);
           }

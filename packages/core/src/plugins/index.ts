@@ -340,7 +340,9 @@ export class Plugin implements PluginOptions, Initable {
       })
       .end();
 
-    this.deps.pluginManager.pluginFailedNames.add(this.name);
+    this.deps.pluginManager.successPlugins.delete(this.name);
+
+    this.deps.pluginManager.faliedPlugins.add(this.name);
 
     this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
@@ -390,8 +392,8 @@ class Hook extends EventEmitter {
 
 export class PluginManager implements Initable, Closeable {
   plugins: Array<Plugin> = [];
-  pluginSuccessNames = new Set<string>();
-  pluginFailedNames = new Set<string>();
+  successPlugins = new Set<string>();
+  faliedPlugins = new Set<string>();
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
   postInit: Array<() => void> = [];
@@ -445,9 +447,9 @@ export class PluginManager implements Initable, Closeable {
     for (const plugin of plugins) {
       if (plugin.status === 'fulfilled') {
         this.plugins.push(plugin.value);
-        this.pluginSuccessNames.add(plugin.value.name);
+        this.successPlugins.add(plugin.value.name);
       } else {
-        this.pluginFailedNames.add(plugin.reason.pluginName);
+        this.faliedPlugins.add(plugin.reason.pluginName);
       }
     }
   }
