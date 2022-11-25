@@ -1,5 +1,5 @@
 import type {Logger} from 'pino';
-import {ConfimAction, PluginSettings, TaskConstructor} from './index.js';
+import {ConfimAction, PluginSettings, TaskConstructor, TaskConstructorOptions} from './index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -32,7 +32,10 @@ export interface PluginOptions {
   onDispose?: () => Promise<void>;
 }
 
-export interface PluginSpaceContext {
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface PluginContextStore {}
+
+export interface PluginContext extends Emitter<PluginSpaceEvent> {
   feedengineVersion: string;
   currentPluginVerison: string;
   name: string;
@@ -58,10 +61,13 @@ export interface PluginSpaceContext {
     options?: ModelOptions<M>
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
-  registerTask<T>(taskName: string, task: TaskConstructor<T>): void;
+  registerTask<T>(
+    taskName: string,
+    task: TaskConstructor<T>,
+    options?: TaskConstructorOptions
+  ): void;
+  store: PluginContextStore;
 }
-
-export type PluginContext = PluginSpaceContext & Emitter<PluginSpaceEvent>;
 
 export type PluginOptionsConstructor<CorePlugin = boolean> = (
   context: PluginContext,

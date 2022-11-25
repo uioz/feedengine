@@ -1,6 +1,5 @@
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
-import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {
   PluginOptionsConstructor,
@@ -10,6 +9,10 @@ import {
   PluginLifeCycleProgress,
   ProgressHandler,
   TaskConstructor,
+  Initable,
+  Closeable,
+  PluginContextStore,
+  TaskConstructorOptions,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -48,7 +51,8 @@ export class Plugin implements PluginOptions, Initable {
     public name: string,
     private nodeModulesDir: string,
     private deps: TopDeps,
-    private hook: Hook
+    private hook: Hook,
+    private store: PluginContextStore
   ) {
     if (builtinPlugins.has(name)) {
       this.baseUrl = '/';
@@ -100,7 +104,7 @@ export class Plugin implements PluginOptions, Initable {
 
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
-    const context = {
+    this.context = {
       currentPluginVerison: this.version,
       feedengineVersion: this.deps.feedengine.version,
       name: this.name,
@@ -159,34 +163,19 @@ export class Plugin implements PluginOptions, Initable {
         return this.deps.storageManager.sequelize.define(this.name, attributes, options);
       },
       getSequelize: () => this.deps.storageManager.sequelize,
-      registerTask: <T>(taskName: string, task: TaskConstructor<T>) => {
+      registerTask: <T>(
+        taskName: string,
+        task: TaskConstructor<T>,
+        options?: TaskConstructorOptions
+      ) => {
         if (this.state !== PluginState.notReady) {
           throw new Error('the register only works before any hooks execution');
         }
 
-        this.deps.taskManager.register(this.name, taskName, task);
+        this.deps.taskManager.register(this.name, taskName, task, options);
       },
-    };
-
-    const eventBus = this.eventBus;
-
-    this.context = new Proxy<PluginContext>(context as any, {
-      get(obj, prop) {
-        return prop in obj ? (obj as any)[prop] : (eventBus as any)[prop];
-      },
-      set(obj, prop, value) {
-        if (prop in obj) {
-          (obj as any)[prop] = value;
-        } else {
-          // TODO: 可能要记录当前插件向 globalContext 写入的所有属性
-          (eventBus as any)[prop] = value;
-        }
-        return true;
-      },
-      has(obj, prop) {
-        return prop in obj ? true : prop in eventBus;
-      },
-    });
+      store: this.store,
+    } as any;
 
     try {
       const plugin = this.options(
@@ -397,6 +386,7 @@ export class PluginManager implements Initable, Closeable {
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
   postInit: Array<() => void> = [];
+  store: PluginContextStore = {};
 
   constructor(private deps: TopDeps) {
     this.log = deps.log.child({source: PluginManager.name});
@@ -426,7 +416,15 @@ export class PluginManager implements Initable, Closeable {
           if (plugin) {
             this.log.info(`load plugin ${pluginName}`);
 
-            const p = new Plugin(plugin, context, pluginName, nodeModulesDir, this.deps, hook);
+            const p = new Plugin(
+              plugin,
+              context,
+              pluginName,
+              nodeModulesDir,
+              this.deps,
+              hook,
+              this.store
+            );
 
             await p.init();
 

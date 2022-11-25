@@ -5,6 +5,7 @@ import type {
   AppSettings,
   Initable,
   TaskTableDefinition,
+  TaskConstructorOptions,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {
@@ -20,6 +21,7 @@ interface TaskMeta {
   pluginName: string;
   taskName: string;
   pluginPerformanceSettings: PluginPerformanceSettings;
+  options?: TaskConstructorOptions;
   task: TaskConstructor<unknown>;
 }
 
@@ -38,7 +40,8 @@ export class TaskManager implements Initable, Closeable {
   allregisteredTask = new Map<string, TaskMeta>();
   performance!: AppSettings['performance'];
   taskModel: ModelStatic<TaskModel>;
-  buffer: Array<[string, string, TaskConstructor<unknown>]> = [];
+  buffer: Array<[string, string, TaskConstructor<unknown>, TaskConstructorOptions | undefined]> =
+    [];
   isReady = false;
 
   constructor({
@@ -141,18 +144,24 @@ export class TaskManager implements Initable, Closeable {
    * @param taskName task name
    * @param taskName
    */
-  register(pluginName: string, taskName: string, task: TaskConstructor<any>) {
+  register(
+    pluginName: string,
+    taskName: string,
+    task: TaskConstructor<any>,
+    options?: TaskConstructorOptions
+  ) {
     if (this.isReady) {
       this.allregisteredTask.set(`${pluginName}@${taskName}`, {
         task,
         pluginName,
         taskName,
+        options,
         pluginPerformanceSettings: this.performance.plugins.find(
           (item) => item.name === pluginName
         )!,
       });
     } else {
-      this.buffer.push([pluginName, taskName, task]);
+      this.buffer.push([pluginName, taskName, task, options]);
     }
   }
 
@@ -176,7 +185,7 @@ export class TaskManager implements Initable, Closeable {
   }
 
   async getAllTaskStateGroupByPlugin() {
-    // TODO: 内存查询->数据库查询
+    // TODO: 内存查询所有注册的任务->数据库查询
     const result = await this.taskModel.sequelize!.query<{
       plugin: string;
       task: string;

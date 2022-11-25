@@ -7,7 +7,7 @@ import type {
   ModelStatic,
   Sequelize,
 } from 'sequelize';
-import {ConfimAction} from './index.js';
+import type {ConfimAction, PluginContextStore} from './index.js';
 
 export interface Task {
   run(): Promise<void>;
@@ -18,8 +18,7 @@ export interface Task {
 export interface TaskContext<T> {
   name: string;
   log: Logger;
-  getSettings(): T;
-  setSettings(): T;
+  settings: T;
   getMainModel<M extends Model, TAttributes = Attributes<M>>(
     attributes: ModelAttributes<M, TAttributes>,
     options?: ModelOptions<M>
@@ -38,6 +37,15 @@ export interface TaskContext<T> {
     };
     progress(): void;
   };
+  store: PluginContextStore;
+}
+
+export interface TaskConstructorOptions {
+  /**
+   * markdown support
+   */
+  introduction?: string;
+  link?: string;
 }
 
 export type TaskConstructor<T> = (context: TaskContext<T>) => Task;

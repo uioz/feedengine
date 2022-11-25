@@ -45,6 +45,8 @@ export const plugin = definePlugin((context) => {
     },
   });
 
+  context.store.atomModel = model;
+
   context.registerFastifyPlugin(function (fastify, options, done) {
     // will be /api/atom/xxxx
     fastify.get('/atom/:provider', async () => {

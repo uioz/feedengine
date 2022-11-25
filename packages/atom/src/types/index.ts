@@ -4,7 +4,7 @@
 import type {Model, InferAttributes, InferCreationAttributes, ModelStatic} from 'sequelize';
 
 declare module 'feedengine' {
-  interface PluginSpaceContext {
+  interface PluginContextStore {
     atomModel: ModelStatic<AtomPluginMainTableModel>;
   }
 }
