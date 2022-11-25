@@ -1,10 +1,5 @@
 import type {Logger} from 'pino';
-import {
-  ConfimAction,
-  PluginSettings,
-  TaskConstructor,
-  TaskRegisterOptions,
-} from '../types/index.js';
+import {ConfimAction, PluginSettings, TaskConstructor} from './index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -19,7 +14,25 @@ import type {
 } from 'sequelize';
 import {PluginState as PS} from '../plugins/index.js';
 
-export interface PluginContextAPI {
+export interface PluginApp {
+  baseUrl?: string; // 默认 /<pluginName>
+  settingUrl?: string | true; // 提供 true 则表示整个应用都是用于设置的, 不提供仅有 dir(包括 baseurl) 则表示仅提供应用, 提供则相对于 /<pluginName>/<settingUrl>
+  type: 'spa' | 'static';
+  dir: string;
+}
+
+export interface OnCreateContext {
+  waitPlugins(pluginNames: Array<string>): Promise<void>;
+}
+
+export interface PluginOptions {
+  app?: PluginApp;
+  onCreate?: (context: OnCreateContext) => Promise<void>;
+  onActive?: () => void;
+  onDispose?: () => Promise<void>;
+}
+
+export interface PluginSpaceContext {
   feedengineVersion: string;
   currentPluginVerison: string;
   name: string;
@@ -45,32 +58,10 @@ export interface PluginContextAPI {
     options?: ModelOptions<M>
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
-  registerTask(taskName: string, task: TaskConstructor, options?: TaskRegisterOptions): void;
+  registerTask<T>(taskName: string, task: TaskConstructor<T>): void;
 }
 
-export interface PluginApp {
-  baseUrl?: string; // 默认 /<pluginName>
-  settingUrl?: string | true; // 提供 true 则表示整个应用都是用于设置的, 不提供仅有 dir(包括 baseurl) 则表示仅提供应用, 提供则相对于 /<pluginName>/<settingUrl>
-  type: 'spa' | 'static';
-  dir: string;
-}
-
-export interface OnCreateContext {
-  waitPlugins(pluginNames: Array<string>): Promise<void>;
-}
-
-export interface PluginOptions {
-  app?: PluginApp;
-  // TOOD: 插件的状态变化发送对应的消息
-  onCreate?: (context: OnCreateContext) => Promise<void>;
-  onActive?: () => void;
-  onDispose?: () => Promise<void>;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface PluginSpaceContext {}
-
-export type PluginContext = PluginContextAPI & PluginSpaceContext & Emitter<PluginSpaceEvent>;
+export type PluginContext = PluginSpaceContext & Emitter<PluginSpaceEvent>;
 
 export type PluginOptionsConstructor<CorePlugin = boolean> = (
   context: PluginContext,

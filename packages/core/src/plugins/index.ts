@@ -4,14 +4,12 @@ import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {
   PluginOptionsConstructor,
-  PluginContextAPI,
+  PluginContext,
   PluginOptions,
   PluginSpaceEvent,
-  PluginSpaceContext,
   PluginLifeCycleProgress,
   ProgressHandler,
   TaskConstructor,
-  TaskRegisterOptions,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -39,7 +37,7 @@ export class Plugin implements PluginOptions, Initable {
   baseUrl: string;
   plugin!: PluginOptions;
   state: keyof typeof PluginState = PluginState.notReady;
-  context!: PluginContextAPI & PluginSpaceContext & Emitter<PluginSpaceEvent>;
+  context!: PluginContext;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
   lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
@@ -161,32 +159,34 @@ export class Plugin implements PluginOptions, Initable {
         return this.deps.storageManager.sequelize.define(this.name, attributes, options);
       },
       getSequelize: () => this.deps.storageManager.sequelize,
-      registerTask: (taskName: string, task: TaskConstructor, options: TaskRegisterOptions = {}) =>
-        this.deps.taskManager.register(this.name, taskName, options, task),
+      registerTask: <T>(taskName: string, task: TaskConstructor<T>) => {
+        if (this.state !== PluginState.notReady) {
+          throw new Error('the register only works before any hooks execution');
+        }
+
+        this.deps.taskManager.register(this.name, taskName, task);
+      },
     };
 
     const eventBus = this.eventBus;
 
-    this.context = new Proxy<PluginContextAPI & PluginSpaceContext & Emitter<PluginSpaceEvent>>(
-      context as any,
-      {
-        get(obj, prop) {
-          return prop in obj ? (obj as any)[prop] : (eventBus as any)[prop];
-        },
-        set(obj, prop, value) {
-          if (prop in obj) {
-            (obj as any)[prop] = value;
-          } else {
-            // TODO: 可能要记录当前插件向 globalContext 写入的所有属性
-            (eventBus as any)[prop] = value;
-          }
-          return true;
-        },
-        has(obj, prop) {
-          return prop in obj ? true : prop in eventBus;
-        },
-      }
-    );
+    this.context = new Proxy<PluginContext>(context as any, {
+      get(obj, prop) {
+        return prop in obj ? (obj as any)[prop] : (eventBus as any)[prop];
+      },
+      set(obj, prop, value) {
+        if (prop in obj) {
+          (obj as any)[prop] = value;
+        } else {
+          // TODO: 可能要记录当前插件向 globalContext 写入的所有属性
+          (eventBus as any)[prop] = value;
+        }
+        return true;
+      },
+      has(obj, prop) {
+        return prop in obj ? true : prop in eventBus;
+      },
+    });
 
     try {
       const plugin = this.options(

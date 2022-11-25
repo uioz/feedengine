@@ -1,7 +1,6 @@
 import type {
   Closeable,
   TaskConstructor,
-  TaskRegisterOptions,
   PluginPerformanceSettings,
   AppSettings,
   Initable,
@@ -18,11 +17,10 @@ import {
 } from 'sequelize';
 
 interface TaskMeta {
-  options: TaskRegisterOptions;
   pluginName: string;
   taskName: string;
   pluginPerformanceSettings: PluginPerformanceSettings;
-  task: TaskConstructor;
+  task: TaskConstructor<unknown>;
 }
 
 interface TaskModel
@@ -40,7 +38,7 @@ export class TaskManager implements Initable, Closeable {
   allregisteredTask = new Map<string, TaskMeta>();
   performance!: AppSettings['performance'];
   taskModel: ModelStatic<TaskModel>;
-  buffer: Array<[string, string, TaskRegisterOptions, TaskConstructor]> = [];
+  buffer: Array<[string, string, TaskConstructor<unknown>]> = [];
   isReady = false;
 
   constructor({
@@ -138,19 +136,12 @@ export class TaskManager implements Initable, Closeable {
    *
    * @param pluginName plugin name
    * @param taskName task name
-   * @param options
    * @param taskName
    */
-  register(
-    pluginName: string,
-    taskName: string,
-    options: TaskRegisterOptions,
-    task: TaskConstructor
-  ) {
+  register(pluginName: string, taskName: string, task: TaskConstructor<any>) {
     if (this.isReady) {
       this.allregisteredTask.set(`${pluginName}@${taskName}`, {
         task,
-        options,
         pluginName,
         taskName,
         pluginPerformanceSettings: this.performance.plugins.find(
@@ -158,7 +149,7 @@ export class TaskManager implements Initable, Closeable {
         )!,
       });
     } else {
-      this.buffer.push([pluginName, taskName, options, task]);
+      this.buffer.push([pluginName, taskName, task]);
     }
   }
 
