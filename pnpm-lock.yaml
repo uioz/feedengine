@@ -34,8 +34,6 @@ importers:
 
   packages/app:
     specifiers:
-      '@fastify/type-provider-typebox': ^2.3.0
-      '@sinclair/typebox': ^0.25.8
       '@vitejs/plugin-vue': ^3.2.0
       '@vueuse/core': ^9.5.0
       feedengine: workspace:^0.1.0
@@ -52,8 +50,6 @@ importers:
       vue-tsc: ^1.0.9
       vuetify: ^3.0.1
     dependencies:
-      '@fastify/type-provider-typebox': 2.3.0_@sinclair+typebox@0.25.8
-      '@sinclair/typebox': 0.25.8
       feedengine-plugin: link:../plugin
       mitt: 3.0.0
     devDependencies:
@@ -421,15 +417,6 @@ packages:
       - supports-color
     dev: false
 
-  /@fastify/type-provider-typebox/2.3.0_@sinclair+typebox@0.25.8:
-    resolution: {integrity: sha512-arEH1FL6CNTgctoVw++jNPJN9DdzUe7rJlb3XJyw7rAGiT2m402P4GMFVhtDqndQzEJN37UJXVYbCR9D0AahgQ==}
-    peerDependencies:
-      '@sinclair/typebox': ^0.24.1
-      fastify: ^4.0.0
-    dependencies:
-      '@sinclair/typebox': 0.25.8
-    dev: false
-
   /@fastify/websocket/7.1.1:
     resolution: {integrity: sha512-8lvB/E6p/o3MlmHzM2NJ19ixteI6Ckw0xOebLfoHoORPmpvCWqSp8+HLz4Gc6HrChH4vM9VcSWAK8jYuTT08hQ==}
     dependencies:
@@ -534,10 +521,6 @@ packages:
       rimraf: 3.0.2
     dev: false
     optional: true
-
-  /@sinclair/typebox/0.25.8:
-    resolution: {integrity: sha512-/7GXgMOCfnxpIov52cPetqQ7bxRBaTBJAgp04Se2UQB1J0vUfEOIMpn63cLc3S5JXDUflCWxELKDV8eiPpmUTQ==}
-    dev: false
 
   /@tootallnate/once/1.1.2:
     resolution: {integrity: sha512-RbzJvlNzmRq5c3O09UipeuXno4tA1FE6ikOjxZK0tuxVv3412l64l5t1W5pj4+rJq9vpkm/kwiR07aZXnsKPxw==}
