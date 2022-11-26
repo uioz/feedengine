@@ -20,6 +20,7 @@ import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
 import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 import {NotificationType} from '../message/index.js';
+import type {Page} from 'puppeteer-core';
 
 export enum PluginState {
   ready,
@@ -45,6 +46,7 @@ export class Plugin implements PluginOptions, Initable {
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
   lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
+  pageRef?: Page;
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -121,6 +123,7 @@ export class Plugin implements PluginOptions, Initable {
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
 
     this.context = {
+      rootDir: this.deps.feedengine.rootDir,
       currentPluginVerison: this.version,
       feedengineVersion: this.deps.feedengine.version,
       name: this.name,
@@ -137,7 +140,9 @@ export class Plugin implements PluginOptions, Initable {
           info: no(NotificationType.info),
         },
       },
-      exit: () => this.onDispose(),
+      exit: () => {
+        setTimeout(() => this.onDispose());
+      },
       on: (key: any, handler: any) => {
         const listener = this.eventListener.get(key);
 
@@ -189,6 +194,19 @@ export class Plugin implements PluginOptions, Initable {
         }
 
         this.deps.taskManager.register(this.name, taskName, task, options);
+      },
+      requestPage: async () => {
+        if (this.state !== PluginState.init) {
+          throw new Error('');
+        }
+
+        if (this.pageRef) {
+          throw new Error('');
+        }
+
+        this.pageRef = await this.deps.driverManager.requestPage();
+
+        return this.pageRef;
       },
       store: this.store,
     } as any;
@@ -291,6 +309,10 @@ export class Plugin implements PluginOptions, Initable {
       });
 
       this.state = PluginState.created;
+
+      if (this.pageRef) {
+        this.deps.driverManager.releasePage(this.pageRef);
+      }
     } catch (error) {
       this.errorHandler(error);
     }
@@ -310,17 +332,21 @@ export class Plugin implements PluginOptions, Initable {
       this.errorHandler(error);
     }
 
-    this.lifecycleProgress.end();
-
     this.context.log.info('onActive');
   }
 
   async onDispose() {
-    if (this.state !== PluginState.error) {
+    if (this.state !== PluginState.error && this.state !== PluginState.disposed) {
       this.state = PluginState.disposed;
     }
 
     try {
+      this.lifecycleProgress
+        .send({
+          state: 'close',
+        })
+        .end();
+
       // TODO: 清空 store 上挂载的资源
       for (const [key, sets] of this.eventListener.entries()) {
         for (const handler of sets) {
@@ -329,13 +355,11 @@ export class Plugin implements PluginOptions, Initable {
         this.eventListener.delete(key);
       }
 
-      this.lifecycleProgress
-        .send({
-          state: 'close',
-        })
-        .end();
-
       this.deps.taskManager.unRegisterTaskByPlugin(this.name);
+
+      if (this.pageRef) {
+        this.deps.driverManager.releasePage(this.pageRef, this.state === PluginState.error);
+      }
 
       await this.plugin.onDispose?.();
     } catch (error) {

@@ -14,6 +14,9 @@ export class DriverManager implements Initable, Closeable {
   log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
   #browser!: Browser;
+  isOpenFirst = true;
+  activedPagePool: Array<PuppeteerCore.Page> = [];
+  freePagePool: Array<PuppeteerCore.Page> = [];
 
   constructor({log, appManager, messageManager}: TopDeps) {
     this.log = log.child({source: DriverManager.name});
@@ -33,20 +36,6 @@ export class DriverManager implements Initable, Closeable {
       } catch (error) {
         this.messageManager.notification(DriverManager.name).error(error + '');
       }
-
-      // const pages = await this.#browser.pages();
-
-      // let page: Page;
-
-      // if (pages.length > 0) {
-      //   page = pages[0];
-      // } else {
-      //   page = await this.#browser.newPage();
-      // }
-
-      // await page.goto('https://www.baidu.com', {
-      //   waitUntil: 'networkidle0',
-      // });
     } else {
       this.messageManager.confirm(DriverManager.name).error('required parameters missing', [
         {
@@ -58,6 +47,41 @@ export class DriverManager implements Initable, Closeable {
     }
 
     this.log.info(`init`);
+  }
+
+  async requestPage() {
+    const freePage = this.freePagePool.shift();
+
+    if (freePage) {
+      return freePage;
+    }
+
+    let page: PuppeteerCore.Page;
+
+    if (this.isOpenFirst) {
+      this.isOpenFirst = false;
+
+      page = (await this.#browser.pages())[0];
+    } else {
+      page = await this.#browser.newPage();
+    }
+
+    this.activedPagePool.push(page);
+
+    return page;
+  }
+
+  releasePage(page: PuppeteerCore.Page, force = false) {
+    this.activedPagePool.splice(
+      this.activedPagePool.findIndex((item) => item === page),
+      1
+    );
+
+    if (force) {
+      page.close();
+    } else {
+      this.freePagePool.push(page);
+    }
   }
 
   async close() {

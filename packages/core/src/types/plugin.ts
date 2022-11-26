@@ -13,6 +13,7 @@ import type {
   Sequelize,
 } from 'sequelize';
 import {PluginState as PS} from '../plugins/index.js';
+import type {Page} from 'puppeteer-core';
 
 export interface PluginApp {
   baseUrl?: string; // 默认 /<pluginName>
@@ -36,6 +37,7 @@ export interface PluginOptions {
 export interface PluginContextStore {}
 
 export interface PluginContext extends Emitter<PluginSpaceEvent> {
+  rootDir: string;
   feedengineVersion: string;
   currentPluginVerison: string;
   name: string;
@@ -47,9 +49,9 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
       info(message: string): void;
     };
     confirm: {
-      warn(message: string, actions: Array<ConfimAction>): void;
-      error(message: string, actions: Array<ConfimAction>): void;
-      info(message: string, actions: Array<ConfimAction>): void;
+      warn(message: string, actions?: Array<ConfimAction>): void;
+      error(message: string, actions?: Array<ConfimAction>): void;
+      info(message: string, actions?: Array<ConfimAction>): void;
     };
   };
   exit(): void;
@@ -66,6 +68,7 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
     task: TaskConstructor<T>,
     options?: TaskConstructorOptions
   ): void;
+  requestPage(): Page;
   store: PluginContextStore;
 }
 

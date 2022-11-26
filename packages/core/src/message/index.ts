@@ -156,20 +156,22 @@ export class MessageManager implements Closeable {
   }
 
   confirm(source: string) {
-    const handler = (type: NotificationType) => (message: string, actions: Array<ConfimAction>) => {
-      this.push({
-        channel: 'notification',
-        consumable: true,
-        consumed: false,
-        id: `${this.id++}`,
-        source,
-        payload: {
-          type,
-          message,
-          actions,
-        },
-      } as ConfirmMessage);
-    };
+    const handler =
+      (type: NotificationType) =>
+      (message: string, actions: Array<ConfimAction> = []) => {
+        this.push({
+          channel: 'notification',
+          consumable: true,
+          consumed: false,
+          id: `${this.id++}`,
+          source,
+          payload: {
+            type,
+            message,
+            actions,
+          },
+        } as ConfirmMessage);
+      };
 
     return {
       warn: handler(NotificationType.warn),

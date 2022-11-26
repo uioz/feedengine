@@ -180,7 +180,7 @@ export class AppManager implements Initable, Closeable {
     await this.deps.taskManager.init();
 
     if (!this.firstBooting) {
-      // await this.deps.driverManager.init();
+      await this.deps.driverManager.init();
     }
 
     this.deps.pluginManager.create();
