@@ -14,7 +14,7 @@ import {
   InferCreationAttributes,
   DataTypes,
   ModelStatic,
-  QueryTypes,
+  Sequelize,
 } from 'sequelize';
 
 interface TaskMeta {
@@ -175,27 +175,29 @@ export class TaskManager implements Initable, Closeable {
     }
   }
 
-  async getAllTask(): Promise<Array<TaskTableDefinition>> {
-    // TODO: 内存查询->数据库查询
-    const tasks = await this.taskModel.findAll();
-
-    return tasks.map((item) => item.dataValues);
-  }
-
   async getAllTaskStateGroupByPlugin() {
-    // TODO: 内存查询所有注册的任务->数据库查询
-    const result = await this.taskModel.sequelize!.query<{
-      plugin: string;
-      task: string;
-      taskCount: number;
-    }>(
-      `SELECT plugin, task, COUNT(task) AS taskCount FROM ${taskTableName} AS test GROUP BY plugin, task`,
-      {type: QueryTypes.SELECT}
-    );
+    const pluginNames = [];
+    const taskNames = [];
+
+    for (const {pluginName, taskName} of this.allregisteredTask.values()) {
+      pluginNames.push(pluginName);
+      taskNames.push(taskName);
+    }
+
+    const data = await this.taskModel.findAll<any>({
+      attributes: {
+        include: [[Sequelize.fn('COUNT', Sequelize.col('task')), 'taskCount']],
+      },
+      where: {
+        plugin: pluginNames,
+        task: taskNames,
+      },
+      group: ['plugin', 'task'],
+    });
 
     const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
 
-    for (const {plugin, task, taskCount} of result) {
+    for (const {plugin, task, taskCount} of data) {
       if (temp[plugin]) {
         temp[plugin].push({
           task: task,

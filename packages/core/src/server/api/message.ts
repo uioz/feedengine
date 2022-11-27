@@ -9,18 +9,22 @@ export const messageRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
 ) {
   fastify.register(websocket as any);
 
-  fastify.get('/message', {websocket: true}, (connection) => {
-    const send = async (message: any) => {
-      await connection.socket.send(JSON.stringify(message));
-    };
+  fastify.register(async (fastify) => {
+    fastify.get('/message', {websocket: true}, (connection) => {
+      const send = async (message: any) => {
+        await connection.socket.send(JSON.stringify(message));
+      };
 
-    messageManager.registerConsumer(send);
+      messageManager.registerConsumer(send);
 
-    connection.socket.on('message', (message) => {
-      messageManager.consume(JSON.parse(message.toString()).id);
+      connection.socket.on('message', (message) => {
+        messageManager.consume(JSON.parse(message.toString()).id);
+      });
+
+      connection.socket.once('close', () => messageManager.unRegiserConsumer(send));
+
+      connection.socket.once('error', () => messageManager.unRegiserConsumer(send));
     });
-    connection.socket.once('close', () => messageManager.unRegiserConsumer(send));
-    connection.socket.once('error', () => messageManager.unRegiserConsumer(send));
   });
 
   done();
