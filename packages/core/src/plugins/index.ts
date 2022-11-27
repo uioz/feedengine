@@ -35,6 +35,8 @@ const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
+class ExitError extends Error {}
+
 export class Plugin implements PluginOptions, Initable {
   version!: string;
   dir?: string;
@@ -64,7 +66,11 @@ export class Plugin implements PluginOptions, Initable {
       this.baseUrl = `/${name}/`;
     }
 
-    hook.once(`all-${PluginState[PluginState.created]}`, () => this.onActive());
+    hook.once(`all-${PluginState[PluginState.created]}`, () => {
+      if (this.state === PluginState.created) {
+        this.onActive();
+      }
+    });
 
     this.lifecycleProgress = this.deps.messageManager.progress(name);
   }
@@ -141,7 +147,7 @@ export class Plugin implements PluginOptions, Initable {
         },
       },
       exit: () => {
-        setTimeout(() => this.onDispose());
+        throw new ExitError();
       },
       on: (key: any, handler: any) => {
         const listener = this.eventListener.get(key);
@@ -370,6 +376,10 @@ export class Plugin implements PluginOptions, Initable {
   }
 
   private errorHandler(error: unknown, destory = true) {
+    if (error instanceof ExitError) {
+      return this.onDispose();
+    }
+
     this.context.log.error(error);
 
     this.state = PluginState.error;
