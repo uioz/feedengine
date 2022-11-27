@@ -3,19 +3,10 @@ import type {
   TaskConstructor,
   PluginPerformanceSettings,
   AppSettings,
-  Initable,
-  TaskTableDefinition,
   TaskConstructorOptions,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
-import {
-  Model,
-  InferAttributes,
-  InferCreationAttributes,
-  DataTypes,
-  ModelStatic,
-  Sequelize,
-} from 'sequelize';
+import {Sequelize} from 'sequelize';
 
 interface TaskMeta {
   pluginName: string;
@@ -25,13 +16,7 @@ interface TaskMeta {
   task: TaskConstructor<unknown>;
 }
 
-interface TaskModel
-  extends TaskTableDefinition,
-    Model<InferAttributes<TaskModel>, InferCreationAttributes<TaskModel>> {}
-
-const taskTableName = 'task';
-
-export class TaskManager implements Initable, Closeable {
+export class TaskManager implements Closeable {
   log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
   pluginManager: TopDeps['pluginManager'];
@@ -39,7 +24,7 @@ export class TaskManager implements Initable, Closeable {
   feedengineMeta: TopDeps['feedengine'];
   allregisteredTask = new Map<string, TaskMeta>();
   performance!: AppSettings['performance'];
-  taskModel: ModelStatic<TaskModel>;
+  tasksModel: TopDeps['storageManager']['tasksModel'];
   buffer: Array<[string, string, TaskConstructor<unknown>, TaskConstructorOptions | undefined]> =
     [];
   isReady = false;
@@ -58,45 +43,17 @@ export class TaskManager implements Initable, Closeable {
     this.appManager = appManager;
     this.feedengineMeta = feedengine;
 
-    this.taskModel = storageManager.sequelize.define<TaskModel>(taskTableName, {
-      id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
-        allowNull: false,
-      },
-      version: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      plugin: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      task: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      name: {
-        type: DataTypes.STRING,
-        allowNull: true,
-      },
-      settings: {
-        type: DataTypes.JSON,
-      },
-    });
+    this.tasksModel = storageManager.tasksModel;
   }
 
-  async init() {
+  async prune() {
     // TODO: 不在移除失效的插件对应的任务, 避免插件卸载用于调试目的的情况下误将之前的配置删除
     // 提供内置任务设计, 修建的操作改为手动执行
     const [performance] = await Promise.all([
       this.appManager.getPerformance(),
       (async () => {
-        await this.taskModel.sync();
-
         const pluginNamesInDb = (
-          await this.taskModel.findAll({
+          await this.tasksModel.findAll({
             attributes: ['plugin'],
           })
         ).map((item) => item.plugin);
@@ -114,7 +71,7 @@ export class TaskManager implements Initable, Closeable {
         }
 
         if (outdatedPlugins.length) {
-          await this.taskModel.destroy({
+          await this.tasksModel.destroy({
             where: {
               plugin: outdatedPlugins,
             },
@@ -184,7 +141,7 @@ export class TaskManager implements Initable, Closeable {
       taskNames.push(taskName);
     }
 
-    const data = await this.taskModel.findAll<any>({
+    const data = await this.tasksModel.findAll<any>({
       attributes: {
         include: [[Sequelize.fn('COUNT', Sequelize.col('task')), 'taskCount']],
       },

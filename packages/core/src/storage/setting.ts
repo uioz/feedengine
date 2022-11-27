@@ -1,12 +1,12 @@
 import type {TopDeps} from '../index.js';
-import {DataTypes, InferAttributes, InferCreationAttributes, Model, ModelStatic} from 'sequelize';
-import type {Initable, PluginSettings} from '../types/index.js';
+import {InferAttributes, InferCreationAttributes, Model, ModelStatic} from 'sequelize';
+import type {PluginSettings} from '../types/index.js';
 
 interface PluginSettingModel
   extends PluginSettings,
     Model<InferAttributes<PluginSettingModel>, InferCreationAttributes<PluginSettingModel>> {}
 
-export class SettingManager implements Initable {
+export class SettingManager {
   storageManager: TopDeps['storageManager'];
   log: TopDeps['log'];
   pluginSettingsModel: ModelStatic<PluginSettingModel>;
@@ -20,31 +20,7 @@ export class SettingManager implements Initable {
 
     this.log = log.child({source: SettingManager.name});
 
-    this.pluginSettingsModel = this.storageManager.sequelize.define<PluginSettingModel>(
-      'PluginSettings',
-      {
-        name: {
-          type: DataTypes.TEXT,
-          primaryKey: true,
-          unique: true,
-          allowNull: false,
-        },
-        version: {
-          type: DataTypes.TEXT,
-          allowNull: false,
-        },
-        settings: {
-          type: DataTypes.JSON,
-          allowNull: false,
-        },
-      }
-    );
-  }
-
-  async init() {
-    await this.pluginSettingsModel.sync();
-
-    this.log.info(`init`);
+    this.pluginSettingsModel = this.storageManager.settingsModel;
   }
 
   async getPluginSettings<T>(name: string): Promise<PluginSettings<T> | null> {
