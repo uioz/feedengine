@@ -34,6 +34,9 @@ class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>
   declare name: string | null;
   declare settings: any | null;
 
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+
   declare taskCount?: NonAttribute<number>;
 }
 
@@ -41,7 +44,11 @@ class Schedules extends Model<InferAttributes<Schedules>, InferCreationAttribute
   declare id: CreationOptional<number>;
   declare taskId: ForeignKey<Tasks['id']>;
   declare type: number;
+  declare trigger: string | null;
   declare lastRun: Date | null;
+
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
 
   declare getTask: BelongsToGetAssociationMixin<Tasks>;
 
@@ -124,6 +131,8 @@ export class StorageManager implements Initable, Closeable {
         settings: {
           type: DataTypes.JSON,
         },
+        createdAt: DataTypes.DATE,
+        updatedAt: DataTypes.DATE,
       },
       {
         sequelize: this.sequelize,
@@ -142,9 +151,14 @@ export class StorageManager implements Initable, Closeable {
           type: DataTypes.TINYINT,
           allowNull: false,
         },
+        trigger: {
+          type: DataTypes.STRING,
+        },
         lastRun: {
           type: DataTypes.DATE,
         },
+        createdAt: DataTypes.DATE,
+        updatedAt: DataTypes.DATE,
       },
       {
         sequelize: this.sequelize,

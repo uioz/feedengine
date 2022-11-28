@@ -4,9 +4,12 @@ import type {
   PluginPerformanceSettings,
   AppSettings,
   TaskConstructorOptions,
+  Initable,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
+import * as fastq from 'fastq';
+import type {queueAsPromised} from 'fastq';
 
 interface TaskMeta {
   pluginName: string;
@@ -14,73 +17,95 @@ interface TaskMeta {
   pluginPerformanceSettings: PluginPerformanceSettings;
   options?: TaskConstructorOptions;
   task: TaskConstructor<unknown>;
+  tasksInRunning: Array<Task>;
 }
 
-export class TaskManager implements Closeable {
+enum TaskState {
+  pending,
+  running,
+  success,
+  error,
+}
+
+export class Task {
+  state = TaskState.pending;
+  taskMeta!: TaskMeta;
+  settings: unknown;
+
+  constructor(private deps: TopDeps) {}
+
+  init(taskMeta: TaskMeta, settings: unknown) {
+    this.taskMeta = taskMeta;
+    this.settings = settings;
+  }
+
+  async run() {
+    //
+  }
+}
+
+export class TaskManager implements Closeable, Initable {
   log: TopDeps['log'];
+  deps: TopDeps;
   messageManager: TopDeps['messageManager'];
-  pluginManager: TopDeps['pluginManager'];
-  appManager: TopDeps['appManager'];
-  feedengineMeta: TopDeps['feedengine'];
   allregisteredTask = new Map<string, TaskMeta>();
-  performance!: AppSettings['performance'];
   tasksModel: TopDeps['storageManager']['tasksModel'];
   buffer: Array<[string, string, TaskConstructor<unknown>, TaskConstructorOptions | undefined]> =
     [];
   isReady = false;
 
-  constructor({
-    log,
-    messageManager,
-    pluginManager,
-    appManager,
-    feedengine,
-    storageManager,
-  }: TopDeps) {
-    this.log = log.child({source: TaskManager.name});
-    this.messageManager = messageManager;
-    this.pluginManager = pluginManager;
-    this.appManager = appManager;
-    this.feedengineMeta = feedengine;
+  performance!: AppSettings['performance'];
+  // queue
+  taskConcurrencyQueue!: queueAsPromised<Task>;
+  taskConcurrencyQueueForPlugin = new Map<string, queueAsPromised<Task>>();
 
-    this.tasksModel = storageManager.tasksModel;
+  constructor(deps: TopDeps) {
+    this.deps = deps;
+    this.log = deps.log.child({source: TaskManager.name});
+    this.messageManager = deps.messageManager;
+
+    this.tasksModel = deps.storageManager.tasksModel;
+  }
+
+  async init() {
+    this.performance = await this.deps.appManager.getPerformance();
+
+    this.taskConcurrencyQueue = fastq.promise(async (task) => {
+      task.state = TaskState.running;
+      await task.run();
+    }, this.performance.taskConcurrency);
+
+    this.log.info('init');
   }
 
   async prune() {
     // TODO: 不在移除失效的插件对应的任务, 避免插件卸载用于调试目的的情况下误将之前的配置删除
     // 提供内置任务设计, 修建的操作改为手动执行
-    const [performance] = await Promise.all([
-      this.appManager.getPerformance(),
-      (async () => {
-        const pluginNamesInDb = (
-          await this.tasksModel.findAll({
-            attributes: ['plugin'],
-          })
-        ).map((item) => item.plugin);
+    const pluginNamesInDb = (
+      await this.tasksModel.findAll({
+        attributes: ['plugin'],
+      })
+    ).map((item) => item.plugin);
 
-        const outdatedPlugins = [];
+    const outdatedPlugins = [];
 
-        for (const pluginNameInDb of pluginNamesInDb) {
-          if (
-            this.pluginManager.loadedPlugins.findIndex(
-              (plugin) => plugin.name === pluginNameInDb
-            ) === -1
-          ) {
-            outdatedPlugins.push(pluginNameInDb);
-          }
-        }
+    for (const pluginNameInDb of pluginNamesInDb) {
+      if (
+        this.deps.pluginManager.loadedPlugins.findIndex(
+          (plugin) => plugin.name === pluginNameInDb
+        ) === -1
+      ) {
+        outdatedPlugins.push(pluginNameInDb);
+      }
+    }
 
-        if (outdatedPlugins.length) {
-          await this.tasksModel.destroy({
-            where: {
-              plugin: outdatedPlugins,
-            },
-          });
-        }
-      })(),
-    ]);
-
-    this.performance = performance;
+    if (outdatedPlugins.length) {
+      await this.tasksModel.destroy({
+        where: {
+          plugin: outdatedPlugins,
+        },
+      });
+    }
 
     this.isReady = true;
 
@@ -89,8 +114,6 @@ export class TaskManager implements Closeable {
 
       this.buffer = [];
     }
-
-    this.log.info('init');
   }
 
   /**
@@ -114,6 +137,7 @@ export class TaskManager implements Closeable {
         pluginPerformanceSettings: this.performance.plugins.find(
           (item) => item.name === pluginName
         )!,
+        tasksInRunning: [],
       });
     } else {
       this.buffer.push([pluginName, taskName, task, options]);
@@ -167,6 +191,58 @@ export class TaskManager implements Closeable {
     }
 
     return temp;
+  }
+
+  execTask(taskId: number) {
+    const task = new Task(this.deps);
+
+    this.tasksModel
+      .findOne({
+        where: {
+          id: taskId,
+        },
+      })
+      .then((data) => {
+        const {plugin: pluginName, task: taskName, settings} = data!;
+
+        const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`)!;
+
+        let queue = this.taskConcurrencyQueueForPlugin.get(pluginName);
+
+        if (queue === undefined) {
+          queue = fastq.promise(
+            (task) => this.taskConcurrencyQueue.push(task),
+            taskMeta.pluginPerformanceSettings.maxTask
+          );
+
+          this.taskConcurrencyQueueForPlugin.set(pluginName, queue);
+        }
+
+        task.init(taskMeta, settings);
+
+        taskMeta.tasksInRunning.push(task);
+
+        queue
+          .push(task)
+          .then(() => {
+            task.state = TaskState.success;
+          })
+          .catch(() => {
+            task.state = TaskState.error;
+          })
+          .finally(() => {
+            taskMeta.tasksInRunning.splice(
+              taskMeta.tasksInRunning.findIndex((item) => item === task),
+              1
+            );
+          });
+      });
+
+    return task;
+  }
+
+  destroyTask(task: Task) {
+    task;
   }
 
   async close() {

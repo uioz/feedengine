@@ -169,7 +169,11 @@ export class AppManager implements Initable, Closeable {
 
     await this.deps.pluginManager.init();
 
-    await Promise.all([this.deps.storageManager.init(), this.checkSettings()]);
+    await Promise.all([
+      this.deps.storageManager.init(),
+      this.checkSettings(),
+      this.deps.taskManager.init(),
+    ]);
 
     if (!this.firstBooting) {
       await this.deps.driverManager.init();
