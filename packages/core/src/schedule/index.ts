@@ -60,28 +60,22 @@ export class ScheduleManager implements Closeable {
         }
 
         if (lastRun === null) {
-          const job = scheduleJob({rule: getCrontab(day)}, () => {
-            this.refs.set(id, {
-              taskRef: this.taskManager.execTask(taskId),
-              taskId,
-              job,
-            });
-          });
-        } else {
-          const job = scheduleJob({start: lastRun, rule: getCrontab(day)}, () => {
-            this.refs.set(id, {
-              taskRef: this.taskManager.execTask(taskId),
-              taskId,
-              job,
-            });
-          });
+          throw new Error('');
+        }
 
-          if (lastRun.getDate() + parseInt(day) === new Date().getDate()) {
-            this.refs.set(id, {
-              taskRef: this.taskManager.execTask(taskId),
-              taskId,
-            });
-          }
+        const job = scheduleJob({start: lastRun, rule: getCrontab(day)}, () => {
+          this.refs.set(id, {
+            taskRef: this.taskManager.execTask(taskId),
+            taskId,
+            job,
+          });
+        });
+
+        if (lastRun.getDate() + parseInt(day) === new Date().getDate()) {
+          this.refs.set(id, {
+            taskRef: this.taskManager.execTask(taskId),
+            taskId,
+          });
         }
 
         break;
@@ -92,7 +86,7 @@ export class ScheduleManager implements Closeable {
   async active() {
     const result = await this.schedulesModel.findAll();
 
-    for (const {lastRun, id, trigger, type, taskId} of result) {
+    for (const {lastRun, id, trigger, type, TaskId: taskId} of result) {
       this.activeTask(lastRun, id, trigger, type, taskId);
     }
   }
@@ -125,7 +119,7 @@ export class ScheduleManager implements Closeable {
         case ScheduleType.manual:
           ref.job?.cancel();
 
-          this.taskManager.destroyTask(ref.taskId);
+          this.taskManager.destroyTask(ref.taskRef);
 
           this.refs.delete(id);
           break;
@@ -136,7 +130,7 @@ export class ScheduleManager implements Closeable {
 
           ref.job?.reschedule(getCrontab(state.trigger));
 
-          this.taskManager.destroyTask(ref.taskId);
+          this.taskManager.destroyTask(ref.taskRef);
           break;
       }
     }
@@ -162,9 +156,10 @@ export class ScheduleManager implements Closeable {
     }
   ): Promise<number> {
     const {lastRun, trigger, id, type} = await this.schedulesModel.create({
-      taskId,
+      TaskId: taskId,
       type: state.type,
       trigger: state.trigger,
+      lastRun: state.type === ScheduleType.interval ? new Date() : undefined,
     });
 
     this.activeTask(lastRun, id, trigger, type, taskId);
@@ -181,7 +176,7 @@ export class ScheduleManager implements Closeable {
 
     ref.job?.cancel();
 
-    this.taskManager.destroyTask(ref.taskId);
+    this.taskManager.destroyTask(ref.taskRef);
 
     this.refs.delete(id);
 
@@ -199,7 +194,7 @@ export class ScheduleManager implements Closeable {
       },
     });
 
-    schedules.map(({id, taskId, type, lastRun, createdAt, trigger}) => {
+    schedules.map(({id, TaskId: taskId, type, lastRun, createdAt, trigger}) => {
       return {
         id,
         taskId,

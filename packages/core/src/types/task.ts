@@ -24,6 +24,7 @@ export interface TaskContext<T> {
     options?: ModelOptions<M>
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
+  exit: () => void;
   window: {
     notification: {
       warn(message: string): void;

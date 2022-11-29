@@ -23,7 +23,7 @@ interface TaskMeta {
 enum TaskState {
   pending,
   running,
-  success,
+  finished,
   error,
 }
 
@@ -31,15 +31,50 @@ export class Task {
   state = TaskState.pending;
   taskMeta!: TaskMeta;
   settings: unknown;
+  ioQueue!: queueAsPromised<() => Promise<void>>;
 
   constructor(private deps: TopDeps) {}
 
-  init(taskMeta: TaskMeta, settings: unknown) {
+  init(
+    taskMeta: TaskMeta,
+    settings: unknown,
+    ioQueue: queueAsPromised<() => Promise<void>>,
+    taskQueue: queueAsPromised<() => Promise<void>>
+  ) {
     this.taskMeta = taskMeta;
     this.settings = settings;
+    this.ioQueue = ioQueue;
+
+    taskMeta.tasksInRunning.push(this);
+
+    taskQueue
+      .push(async () => {
+        if (this.state === TaskState.error || this.state === TaskState.finished) {
+          return;
+        }
+        this.state = TaskState.running;
+
+        await this.run();
+      })
+      .then(() => {
+        this.state = TaskState.finished;
+      })
+      .catch(() => {
+        this.state = TaskState.error;
+      })
+      .finally(() => {
+        taskMeta.tasksInRunning.splice(
+          taskMeta.tasksInRunning.findIndex((item) => item === this),
+          1
+        );
+      });
   }
 
   async run() {
+    //
+  }
+
+  destroy() {
     //
   }
 }
@@ -53,11 +88,13 @@ export class TaskManager implements Closeable, Initable {
   buffer: Array<[string, string, TaskConstructor<unknown>, TaskConstructorOptions | undefined]> =
     [];
   isReady = false;
-
   performance!: AppSettings['performance'];
-  // queue
-  taskConcurrencyQueue!: queueAsPromised<Task>;
-  taskConcurrencyQueueForPlugin = new Map<string, queueAsPromised<Task>>();
+
+  taskConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
+  taskConcurrencyQueueForPlugin = new Map<string, queueAsPromised<() => Promise<void>>>();
+
+  ioConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
+  ioConcurrencyQueueForPlugin = new Map<string, queueAsPromised<() => Promise<void>>>();
 
   constructor(deps: TopDeps) {
     this.deps = deps;
@@ -70,10 +107,9 @@ export class TaskManager implements Closeable, Initable {
   async init() {
     this.performance = await this.deps.appManager.getPerformance();
 
-    this.taskConcurrencyQueue = fastq.promise(async (task) => {
-      task.state = TaskState.running;
-      await task.run();
-    }, this.performance.taskConcurrency);
+    this.taskConcurrencyQueue = fastq.promise((job) => job(), this.performance.taskConcurrency);
+
+    this.ioConcurrencyQueue = fastq.promise((job) => job(), this.performance.ioConcurrency);
 
     this.log.info('init');
   }
@@ -116,12 +152,6 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  /**
-   *
-   * @param pluginName plugin name
-   * @param taskName task name
-   * @param taskName
-   */
   register(
     pluginName: string,
     taskName: string,
@@ -165,7 +195,7 @@ export class TaskManager implements Closeable, Initable {
       taskNames.push(taskName);
     }
 
-    const data = await this.tasksModel.findAll<any>({
+    const data = await this.tasksModel.findAll({
       attributes: {
         include: [[Sequelize.fn('COUNT', Sequelize.col('task')), 'taskCount']],
       },
@@ -181,9 +211,9 @@ export class TaskManager implements Closeable, Initable {
     for (const {plugin, task, taskCount} of data) {
       if (temp[plugin]) {
         temp[plugin].push({
-          task: task,
-          taskCount: taskCount,
-          working: 0, // TOOD: 与正在执行中的任务进行混合
+          task,
+          taskCount,
+          working: this.allregisteredTask.get(`${plugin}@${task}`)?.tasksInRunning.length ?? 0,
         });
       } else {
         temp[plugin] = [{task, taskCount, working: 0}];
@@ -207,42 +237,34 @@ export class TaskManager implements Closeable, Initable {
 
         const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`)!;
 
-        let queue = this.taskConcurrencyQueueForPlugin.get(pluginName);
+        let taskQueueForPlugin = this.taskConcurrencyQueueForPlugin.get(pluginName);
 
-        if (queue === undefined) {
-          queue = fastq.promise(
-            (task) => this.taskConcurrencyQueue.push(task),
+        if (taskQueueForPlugin === undefined) {
+          taskQueueForPlugin = fastq.promise(
+            (job) => this.taskConcurrencyQueue.push(job),
             taskMeta.pluginPerformanceSettings.maxTask
           );
 
-          this.taskConcurrencyQueueForPlugin.set(pluginName, queue);
+          this.taskConcurrencyQueueForPlugin.set(pluginName, taskQueueForPlugin);
         }
 
-        task.init(taskMeta, settings);
+        let ioQueueForPlugin = this.ioConcurrencyQueueForPlugin.get(pluginName);
 
-        taskMeta.tasksInRunning.push(task);
+        if (ioQueueForPlugin === undefined) {
+          ioQueueForPlugin = fastq.promise(
+            (job) => this.ioConcurrencyQueue.push(job),
+            taskMeta.pluginPerformanceSettings.maxIo
+          );
+        }
 
-        queue
-          .push(task)
-          .then(() => {
-            task.state = TaskState.success;
-          })
-          .catch(() => {
-            task.state = TaskState.error;
-          })
-          .finally(() => {
-            taskMeta.tasksInRunning.splice(
-              taskMeta.tasksInRunning.findIndex((item) => item === task),
-              1
-            );
-          });
+        task.init(taskMeta, settings, ioQueueForPlugin, taskQueueForPlugin);
       });
 
     return task;
   }
 
   destroyTask(task: Task) {
-    task;
+    task.destroy();
   }
 
   async close() {

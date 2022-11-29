@@ -37,12 +37,13 @@ class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare taskCount?: NonAttribute<number>;
+  //
+  declare taskCount: NonAttribute<number>;
 }
 
 class Schedules extends Model<InferAttributes<Schedules>, InferCreationAttributes<Schedules>> {
   declare id: CreationOptional<number>;
-  declare taskId: ForeignKey<Tasks['id']>;
+  declare TaskId: ForeignKey<Tasks['id']>;
   declare type: number;
   declare trigger: string | null;
   declare lastRun: Date | null;
