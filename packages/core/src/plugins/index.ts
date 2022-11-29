@@ -37,7 +37,7 @@ const pluginPattern = /feedengine-.+-plugin$/;
 
 class ExitError extends Error {}
 
-export class Plugin implements PluginOptions, Initable {
+export class PluginWrap implements PluginOptions, Initable {
   version!: string;
   dir?: string;
   settingUrl?: string | true;
@@ -438,7 +438,7 @@ class Hook extends EventEmitter {
 }
 
 export class PluginManager implements Initable, Closeable {
-  loadedPlugins: Array<Plugin> = [];
+  loadedPlugins: Array<PluginWrap> = [];
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
   postInit: Array<() => void> = [];
@@ -484,7 +484,7 @@ export class PluginManager implements Initable, Closeable {
             if (plugin) {
               this.log.info(`load plugin ${pluginName}`);
 
-              const p = new Plugin(
+              const p = new PluginWrap(
                 plugin,
                 context,
                 pluginName,
@@ -504,7 +504,7 @@ export class PluginManager implements Initable, Closeable {
           }
         })
       )
-    ).filter((item) => item !== undefined) as Array<Plugin>;
+    ).filter((item) => item !== undefined) as Array<PluginWrap>;
 
     this.loadedPlugins.forEach(({name}) => loadedPluginNamesSet.add(name));
 

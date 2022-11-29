@@ -8,11 +8,11 @@ import type {
   Sequelize,
 } from 'sequelize';
 import type {ConfimAction, PluginContextStore} from './index.js';
+import type {Page} from 'puppeteer-core';
 
 export interface Task {
   run(): Promise<void>;
-  immediate?(): Promise<void>;
-  destroy?(): Promise<void>;
+  destroy(): Promise<void>;
 }
 
 export interface TaskContext<T> {
@@ -25,6 +25,7 @@ export interface TaskContext<T> {
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
   exit: () => void;
+  requestPage(): Page;
   window: {
     notification: {
       warn(message: string): void;
@@ -39,6 +40,7 @@ export interface TaskContext<T> {
     progress(): void;
   };
   store: PluginContextStore;
+  ioQueue: (interval?: number) => <T>(job: () => Promise<T>) => Promise<T>;
 }
 
 export interface TaskConstructorOptions {

@@ -5,11 +5,13 @@ import type {
   AppSettings,
   TaskConstructorOptions,
   Initable,
+  Task,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
+import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 
 interface TaskMeta {
   pluginName: string;
@@ -17,7 +19,7 @@ interface TaskMeta {
   pluginPerformanceSettings: PluginPerformanceSettings;
   options?: TaskConstructorOptions;
   task: TaskConstructor<unknown>;
-  tasksInRunning: Array<Task>;
+  tasksInRunning: Array<TaskWrap>;
 }
 
 enum TaskState {
@@ -27,25 +29,34 @@ enum TaskState {
   error,
 }
 
-export class Task {
+export class TaskWrap {
   state = TaskState.pending;
   taskMeta!: TaskMeta;
   settings: unknown;
   ioQueue!: queueAsPromised<() => Promise<void>>;
+  task!: Task;
+  log!: TopDeps['log'];
+  taskId!: number;
 
   constructor(private deps: TopDeps) {}
 
   init(
+    taskId: number,
     taskMeta: TaskMeta,
     settings: unknown,
     ioQueue: queueAsPromised<() => Promise<void>>,
     taskQueue: queueAsPromised<() => Promise<void>>
   ) {
+    this.taskId = taskId;
     this.taskMeta = taskMeta;
     this.settings = settings;
     this.ioQueue = ioQueue;
 
     taskMeta.tasksInRunning.push(this);
+
+    this.log = this.deps.log.child({
+      source: `${taskMeta.pluginName}@${taskMeta.taskName}@${taskId}`,
+    });
 
     taskQueue
       .push(async () => {
@@ -71,7 +82,26 @@ export class Task {
   }
 
   async run() {
-    //
+    this.task = this.taskMeta.task({
+      name: this.taskMeta.pluginName,
+      log: this.log,
+      settings: this.settings,
+      getMainModel: <M extends Model, TAttributes = Attributes<M>>(
+        attributes: ModelAttributes<M, TAttributes>,
+        options?: ModelOptions<M>
+      ) => {
+        return this.deps.storageManager.sequelize.define(this.name, attributes, options);
+      },
+      getSequelize: () => this.deps.storageManager.sequelize,
+    });
+
+    try {
+      await this.task.run();
+      this.state === TaskState.finished;
+    } catch (error) {
+      //
+      this.state === TaskState.error;
+    }
   }
 
   destroy() {
@@ -182,6 +212,7 @@ export class TaskManager implements Closeable, Initable {
     for (const [key, value] of this.allregisteredTask.entries()) {
       if (value.pluginName === pluginName) {
         this.allregisteredTask.delete(key);
+        // TODO: 销毁正在执行中的任务
       }
     }
   }
@@ -224,7 +255,15 @@ export class TaskManager implements Closeable, Initable {
   }
 
   execTask(taskId: number) {
-    const task = new Task(this.deps);
+    for (const {tasksInRunning} of this.allregisteredTask.values()) {
+      for (const task of tasksInRunning) {
+        if (taskId === task.taskId) {
+          throw new Error('duplicated task');
+        }
+      }
+    }
+
+    const task = new TaskWrap(this.deps);
 
     this.tasksModel
       .findOne({
@@ -257,13 +296,13 @@ export class TaskManager implements Closeable, Initable {
           );
         }
 
-        task.init(taskMeta, settings, ioQueueForPlugin, taskQueueForPlugin);
+        task.init(taskId, taskMeta, settings, ioQueueForPlugin, taskQueueForPlugin);
       });
 
     return task;
   }
 
-  destroyTask(task: Task) {
+  destroyTask(task: TaskWrap) {
     task.destroy();
   }
 

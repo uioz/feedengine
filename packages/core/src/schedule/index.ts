@@ -1,7 +1,7 @@
 import type {TopDeps} from '../index.js';
 import type {Closeable} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
-import type {Task} from '../task/index.js';
+import type {TaskWrap} from '../task/index.js';
 
 export enum ScheduleType {
   startup,
@@ -21,7 +21,7 @@ export class ScheduleManager implements Closeable {
   refs = new Map<
     number,
     {
-      taskRef: Task;
+      taskRef?: TaskWrap;
       taskId: number;
       job?: Job;
     }
@@ -37,7 +37,7 @@ export class ScheduleManager implements Closeable {
     this.taskManager = taskManager;
   }
 
-  private activeTask(
+  private scheduleTask(
     lastRun: Date | null,
     id: number,
     trigger: string | null,
@@ -46,6 +46,11 @@ export class ScheduleManager implements Closeable {
   ) {
     const matchsDay = /^d(\d+)/;
     switch (type) {
+      case ScheduleType.manual:
+        this.refs.set(id, {
+          taskId,
+        });
+        break;
       case ScheduleType.startup:
         this.refs.set(id, {
           taskRef: this.taskManager.execTask(taskId),
@@ -87,7 +92,7 @@ export class ScheduleManager implements Closeable {
     const result = await this.schedulesModel.findAll();
 
     for (const {lastRun, id, trigger, type, TaskId: taskId} of result) {
-      this.activeTask(lastRun, id, trigger, type, taskId);
+      this.scheduleTask(lastRun, id, trigger, type, taskId);
     }
   }
 
@@ -113,32 +118,38 @@ export class ScheduleManager implements Closeable {
   ) {
     const ref = this.refs.get(id);
 
-    if (ref) {
-      switch (state.type) {
-        case ScheduleType.startup:
-        case ScheduleType.manual:
-          ref.job?.cancel();
-
-          this.taskManager.destroyTask(ref.taskRef);
-
-          this.refs.delete(id);
-          break;
-        case ScheduleType.interval:
-          if (state.trigger === undefined) {
-            throw new Error('');
-          }
-
-          ref.job?.reschedule(getCrontab(state.trigger));
-
-          this.taskManager.destroyTask(ref.taskRef);
-          break;
-      }
+    if (!ref) {
+      throw new Error('');
     }
+
+    const data = await this.schedulesModel.findOne({
+      where: {
+        id,
+      },
+    });
+
+    if (data === null) {
+      throw new Error('');
+    }
+
+    this.cancelSchedule(id);
+
+    this.refs.delete(id);
+
+    Object.assign(data.dataValues, {
+      type: state.type,
+      trigger: state.trigger,
+    });
+
+    const {lastRun, trigger, type, TaskId} = data.dataValues;
+
+    this.scheduleTask(lastRun, id, trigger, type, TaskId);
 
     await this.schedulesModel.update(
       {
-        type: state.type,
-        trigger: state.trigger,
+        lastRun,
+        trigger,
+        type,
       },
       {
         where: {
@@ -152,6 +163,9 @@ export class ScheduleManager implements Closeable {
     taskId: number,
     state: {
       type: ScheduleType;
+      /**
+       * type.interval 类型的任务 trigger 是必须提供的
+       */
       trigger?: string;
     }
   ): Promise<number> {
@@ -159,15 +173,18 @@ export class ScheduleManager implements Closeable {
       TaskId: taskId,
       type: state.type,
       trigger: state.trigger,
+      // 为新创建的定时任务设置创建时间为最后运行时间
+      // 如果让其默认值为 null 在用户未到达定时任务执行前关闭后再次打开
+      // 依然要从新计时可能导致永远无法执行定时任务
       lastRun: state.type === ScheduleType.interval ? new Date() : undefined,
     });
 
-    this.activeTask(lastRun, id, trigger, type, taskId);
+    this.scheduleTask(lastRun, id, trigger, type, taskId);
 
     return id;
   }
 
-  async deleteSchedule(id: number) {
+  async cancelSchedule(id: number) {
     const ref = this.refs.get(id);
 
     if (ref === undefined) {
@@ -176,7 +193,13 @@ export class ScheduleManager implements Closeable {
 
     ref.job?.cancel();
 
-    this.taskManager.destroyTask(ref.taskRef);
+    if (ref.taskRef) {
+      this.taskManager.destroyTask(ref.taskRef);
+    }
+  }
+
+  async deleteSchedule(id: number) {
+    this.cancelSchedule(id);
 
     this.refs.delete(id);
 
@@ -202,7 +225,7 @@ export class ScheduleManager implements Closeable {
         lastRun,
         createdAt,
         trigger,
-        state: this.refs.get(id)?.taskRef.state,
+        state: this.refs.get(id)?.taskRef?.state,
       };
     });
   }
