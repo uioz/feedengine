@@ -28,7 +28,6 @@ class PluginSettings extends Model<
 
 class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>> {
   declare id: CreationOptional<number>;
-  declare version: string;
   declare plugin: string;
   declare task: string;
   declare name: string | null;
@@ -112,10 +111,6 @@ export class StorageManager implements Initable, Closeable {
           type: DataTypes.INTEGER,
           autoIncrement: true,
           primaryKey: true,
-          allowNull: false,
-        },
-        version: {
-          type: DataTypes.STRING,
           allowNull: false,
         },
         plugin: {

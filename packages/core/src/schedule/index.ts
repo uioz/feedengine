@@ -4,6 +4,8 @@ import {type Job, scheduleJob} from 'node-schedule';
 import type {TaskWrap} from '../task/index.js';
 
 export enum ScheduleType {
+  core,
+  other,
   startup,
   interval,
   manual,
@@ -194,7 +196,7 @@ export class ScheduleManager implements Closeable {
     ref.job?.cancel();
 
     if (ref.taskRef) {
-      this.taskManager.destroyTask(ref.taskRef);
+      ref.taskRef.destroy();
     }
   }
 

@@ -1,5 +1,5 @@
 import type {Logger} from 'pino';
-import {ConfimAction, PluginSettings, TaskConstructor, TaskConstructorOptions} from './index.js';
+import {ConfimAction, PluginSettings, TaskConstructor} from './index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -63,11 +63,7 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
     options?: ModelOptions<M>
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
-  registerTask<T>(
-    taskName: string,
-    task: TaskConstructor<T>,
-    options?: TaskConstructorOptions
-  ): void;
+  registerTask(taskName: string, task: TaskConstructor): void;
   requestPage(): Page;
   store: PluginContextStore;
 }

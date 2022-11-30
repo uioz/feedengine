@@ -3,7 +3,6 @@ import type {
   TaskConstructor,
   PluginPerformanceSettings,
   AppSettings,
-  TaskConstructorOptions,
   Initable,
   Task,
 } from '../types/index.js';
@@ -17,8 +16,7 @@ interface TaskMeta {
   pluginName: string;
   taskName: string;
   pluginPerformanceSettings: PluginPerformanceSettings;
-  options?: TaskConstructorOptions;
-  task: TaskConstructor<unknown>;
+  taskConstructor: TaskConstructor;
   tasksInRunning: Array<TaskWrap>;
 }
 
@@ -29,22 +27,34 @@ enum TaskState {
   error,
 }
 
+class ExitError extends Error {}
+
 export class TaskWrap {
-  state = TaskState.pending;
+  #state = TaskState.pending;
   taskMeta!: TaskMeta;
   settings: unknown;
-  ioQueue!: queueAsPromised<() => Promise<void>>;
+  ioQueue!: queueAsPromised<() => Promise<any>>;
   task!: Task;
   log!: TopDeps['log'];
   taskId!: number;
 
   constructor(private deps: TopDeps) {}
 
+  public get state() {
+    return this.#state;
+  }
+
+  public set state(v: TaskState) {
+    this.#state = v;
+    // TODO: send the task's state to client
+    this.log.info(`state ${TaskState[v]}`);
+  }
+
   init(
     taskId: number,
     taskMeta: TaskMeta,
     settings: unknown,
-    ioQueue: queueAsPromised<() => Promise<void>>,
+    ioQueue: queueAsPromised<() => Promise<any>>,
     taskQueue: queueAsPromised<() => Promise<void>>
   ) {
     this.taskId = taskId;
@@ -58,54 +68,106 @@ export class TaskWrap {
       source: `${taskMeta.pluginName}@${taskMeta.taskName}@${taskId}`,
     });
 
-    taskQueue
-      .push(async () => {
-        if (this.state === TaskState.error || this.state === TaskState.finished) {
-          return;
-        }
+    taskQueue.push(async () => {
+      if (this.state === TaskState.pending) {
         this.state = TaskState.running;
-
         await this.run();
-      })
-      .then(() => {
-        this.state = TaskState.finished;
-      })
-      .catch(() => {
-        this.state = TaskState.error;
-      })
-      .finally(() => {
-        taskMeta.tasksInRunning.splice(
-          taskMeta.tasksInRunning.findIndex((item) => item === this),
-          1
-        );
-      });
+      }
+    });
   }
 
   async run() {
-    this.task = this.taskMeta.task({
-      name: this.taskMeta.pluginName,
+    const checkIsStillRunning = () => {
+      if (this.state !== TaskState.running) {
+        throw new Error(`task isn't running`);
+      }
+    };
+
+    this.task = this.taskMeta.taskConstructor.setup!({
+      taskName: this.taskMeta.taskName,
+      pluginName: this.taskMeta.pluginName,
+      id: this.taskId,
       log: this.log,
       settings: this.settings,
       getMainModel: <M extends Model, TAttributes = Attributes<M>>(
         attributes: ModelAttributes<M, TAttributes>,
         options?: ModelOptions<M>
       ) => {
-        return this.deps.storageManager.sequelize.define(this.name, attributes, options);
+        return this.deps.storageManager.sequelize.define(
+          this.taskMeta.pluginName,
+          attributes,
+          options
+        );
       },
       getSequelize: () => this.deps.storageManager.sequelize,
+      exit: () => {
+        throw new ExitError();
+      },
+      ioQueue: (timeout?: number) => (job) => {
+        checkIsStillRunning();
+
+        return this.ioQueue.push(async () => {
+          checkIsStillRunning();
+          if (timeout) {
+            await new Promise((resolve) => setTimeout(resolve, timeout));
+
+            checkIsStillRunning();
+
+            return await job();
+          } else {
+            return await job();
+          }
+        });
+      },
+      requestPage: async () => {
+        checkIsStillRunning();
+
+        const page = await this.deps.driverManager.requestPage();
+
+        checkIsStillRunning();
+
+        return page;
+      },
+      store: this.deps.pluginManager.store,
     });
 
     try {
       await this.task.run();
-      this.state === TaskState.finished;
+      this.destroy();
     } catch (error) {
-      //
-      this.state === TaskState.error;
+      this.errorHandler(error);
     }
   }
 
+  private errorHandler(error: unknown) {
+    if (error instanceof ExitError) {
+      return this.destroy();
+    }
+
+    this.state = TaskState.error;
+
+    // TODO: confirm
+
+    this.log.error(error);
+
+    this.destroy();
+  }
+
   destroy() {
-    //
+    if (this.state !== TaskState.error) {
+      this.state = TaskState.finished;
+    }
+
+    try {
+      this.task.destroy();
+    } catch (error) {
+      this.log.error(error);
+    } finally {
+      this.taskMeta.tasksInRunning.splice(
+        this.taskMeta.tasksInRunning.findIndex((item) => item === this),
+        1
+      );
+    }
   }
 }
 
@@ -115,8 +177,7 @@ export class TaskManager implements Closeable, Initable {
   messageManager: TopDeps['messageManager'];
   allregisteredTask = new Map<string, TaskMeta>();
   tasksModel: TopDeps['storageManager']['tasksModel'];
-  buffer: Array<[string, string, TaskConstructor<unknown>, TaskConstructorOptions | undefined]> =
-    [];
+  buffer: Array<[string, string, TaskConstructor]> = [];
   isReady = false;
   performance!: AppSettings['performance'];
 
@@ -182,25 +243,19 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  register(
-    pluginName: string,
-    taskName: string,
-    task: TaskConstructor<any>,
-    options?: TaskConstructorOptions
-  ) {
+  register(pluginName: string, taskName: string, task: TaskConstructor) {
     if (this.isReady) {
       this.allregisteredTask.set(`${pluginName}@${taskName}`, {
-        task,
+        taskConstructor: task,
         pluginName,
         taskName,
-        options,
         pluginPerformanceSettings: this.performance.plugins.find(
           (item) => item.name === pluginName
         )!,
         tasksInRunning: [],
       });
     } else {
-      this.buffer.push([pluginName, taskName, task, options]);
+      this.buffer.push([pluginName, taskName, task]);
     }
   }
 
@@ -211,8 +266,10 @@ export class TaskManager implements Closeable, Initable {
 
     for (const [key, value] of this.allregisteredTask.entries()) {
       if (value.pluginName === pluginName) {
+        for (const task of value.tasksInRunning) {
+          task.destroy();
+        }
         this.allregisteredTask.delete(key);
-        // TODO: 销毁正在执行中的任务
       }
     }
   }
@@ -302,8 +359,30 @@ export class TaskManager implements Closeable, Initable {
     return task;
   }
 
-  destroyTask(task: TaskWrap) {
-    task.destroy();
+  async createTask(
+    pluginName: string,
+    taskName: string,
+    name?: string,
+    settings?: unknown
+  ): Promise<number> {
+    const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`);
+
+    if (taskMeta === undefined) {
+      throw new Error('');
+    }
+
+    if (taskMeta.taskConstructor.setup) {
+      throw new Error('');
+    }
+
+    const {id} = await this.tasksModel.create({
+      plugin: pluginName,
+      task: taskName,
+      name,
+      settings,
+    });
+
+    return id;
   }
 
   async close() {

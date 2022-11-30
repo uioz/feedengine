@@ -12,7 +12,6 @@ import {
   Initable,
   Closeable,
   PluginContextStore,
-  TaskConstructorOptions,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -190,16 +189,12 @@ export class PluginWrap implements PluginOptions, Initable {
         return this.deps.storageManager.sequelize.define(this.name, attributes, options);
       },
       getSequelize: () => this.deps.storageManager.sequelize,
-      registerTask: <T>(
-        taskName: string,
-        task: TaskConstructor<T>,
-        options?: TaskConstructorOptions
-      ) => {
+      registerTask: (taskName: string, task: TaskConstructor) => {
         if (this.state !== PluginState.ready) {
           throw new Error('the register only works before any hooks execution');
         }
 
-        this.deps.taskManager.register(this.name, taskName, task, options);
+        this.deps.taskManager.register(this.name, taskName, task);
       },
       requestPage: async () => {
         if (this.state !== PluginState.init) {

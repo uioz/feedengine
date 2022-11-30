@@ -7,16 +7,18 @@ import type {
   ModelStatic,
   Sequelize,
 } from 'sequelize';
-import type {ConfimAction, PluginContextStore} from './index.js';
+import type {PluginContextStore} from './index.js';
 import type {Page} from 'puppeteer-core';
 
 export interface Task {
   run(): Promise<void>;
-  destroy(): Promise<void>;
+  destroy(): void;
 }
 
 export interface TaskContext<T> {
-  name: string;
+  pluginName: string;
+  taskName: string;
+  id: number;
   log: Logger;
   settings: T;
   getMainModel<M extends Model, TAttributes = Attributes<M>>(
@@ -25,33 +27,32 @@ export interface TaskContext<T> {
   ): ModelStatic<M>;
   getSequelize(): Sequelize;
   exit: () => void;
-  requestPage(): Page;
-  window: {
-    notification: {
-      warn(message: string): void;
-      error(message: string): void;
-      info(message: string): void;
-    };
-    confirm: {
-      warn(message: string, actions: Array<ConfimAction>): void;
-      error(message: string, actions: Array<ConfimAction>): void;
-      info(message: string, actions: Array<ConfimAction>): void;
-    };
-    progress(): void;
-  };
+  requestPage: () => Promise<Page>;
+  // window: {
+  //   notification: {
+  //     warn(message: string): void;
+  //     error(message: string): void;
+  //     info(message: string): void;
+  //   };
+  //   confirm: {
+  //     warn(message: string, actions: Array<ConfimAction>): void;
+  //     error(message: string, actions: Array<ConfimAction>): void;
+  //     info(message: string, actions: Array<ConfimAction>): void;
+  //   };
+  //   progress(): void;
+  // };
   store: PluginContextStore;
   ioQueue: (interval?: number) => <T>(job: () => Promise<T>) => Promise<T>;
 }
 
-export interface TaskConstructorOptions {
+export interface TaskConstructor {
   /**
    * markdown support
    */
   description?: string;
   link?: string;
+  setup?<T>(context: TaskContext<T>): Task;
 }
-
-export type TaskConstructor<T> = (context: TaskContext<T>) => Task;
 
 export interface TaskTableDefinition {
   id: number;
