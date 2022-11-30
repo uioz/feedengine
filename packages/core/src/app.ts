@@ -149,15 +149,13 @@ export class AppManager implements Initable, Closeable {
   }
 
   async close() {
+    await this.deps.taskManager.close();
+
     await this.deps.pluginManager.close();
 
     await this.deps.messageManager.close();
 
     await this.deps.serverManager.close();
-
-    if (!this.firstBooting) {
-      await this.deps.driverManager.close();
-    }
 
     await this.deps.storageManager.close();
 
