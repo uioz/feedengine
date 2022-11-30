@@ -39,6 +39,10 @@ export class ScheduleManager implements Closeable {
     this.taskManager = taskManager;
   }
 
+  private taskSuccessCallback = (taskId: number) => {
+    this.updateLastRunTime(taskId, new Date());
+  };
+
   private scheduleTask(
     lastRun: Date | null,
     id: number,
@@ -55,7 +59,7 @@ export class ScheduleManager implements Closeable {
         break;
       case ScheduleType.startup:
         this.refs.set(id, {
-          taskRef: this.taskManager.execTask(taskId),
+          taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
           taskId,
         });
         break;
@@ -72,7 +76,7 @@ export class ScheduleManager implements Closeable {
 
         const job = scheduleJob({start: lastRun, rule: getCrontab(day)}, () => {
           this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId),
+            taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
             taskId,
             job,
           });
@@ -80,7 +84,7 @@ export class ScheduleManager implements Closeable {
 
         if (lastRun.getDate() + parseInt(day) === new Date().getDate()) {
           this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId),
+            taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
             taskId,
           });
         }

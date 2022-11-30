@@ -37,6 +37,7 @@ export class TaskWrap {
   task!: Task;
   log!: TopDeps['log'];
   taskId!: number;
+  successCallback: ((taskId: number) => void) | null = null;
 
   constructor(private deps: TopDeps) {}
 
@@ -55,12 +56,14 @@ export class TaskWrap {
     taskMeta: TaskMeta,
     settings: unknown,
     ioQueue: queueAsPromised<() => Promise<any>>,
-    taskQueue: queueAsPromised<() => Promise<void>>
+    taskQueue: queueAsPromised<() => Promise<void>>,
+    successCallback: (taskId: number) => void
   ) {
     this.taskId = taskId;
     this.taskMeta = taskMeta;
     this.settings = settings;
     this.ioQueue = ioQueue;
+    this.successCallback = successCallback;
 
     taskMeta.tasksInRunning.push(this);
 
@@ -133,6 +136,7 @@ export class TaskWrap {
 
     try {
       await this.task.run();
+      this.successCallback?.(this.taskId);
       this.destroy();
     } catch (error) {
       this.errorHandler(error);
@@ -160,6 +164,8 @@ export class TaskWrap {
 
     try {
       this.task.destroy();
+      this.successCallback = null;
+      // release the page
     } catch (error) {
       this.log.error(error);
     } finally {
@@ -311,7 +317,7 @@ export class TaskManager implements Closeable, Initable {
     return temp;
   }
 
-  execTask(taskId: number) {
+  execTask(taskId: number, successCallback: (taskId: number) => void) {
     for (const {tasksInRunning} of this.allregisteredTask.values()) {
       for (const task of tasksInRunning) {
         if (taskId === task.taskId) {
@@ -353,7 +359,14 @@ export class TaskManager implements Closeable, Initable {
           );
         }
 
-        task.init(taskId, taskMeta, settings, ioQueueForPlugin, taskQueueForPlugin);
+        task.init(
+          taskId,
+          taskMeta,
+          settings,
+          ioQueueForPlugin,
+          taskQueueForPlugin,
+          successCallback
+        );
       });
 
     return task;
