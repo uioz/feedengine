@@ -47,7 +47,7 @@ export class PluginWrap implements PluginOptions, Initable {
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
   lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
-  pageRef?: Page;
+  pageRef: Page | null = null;
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -205,7 +205,7 @@ export class PluginWrap implements PluginOptions, Initable {
           throw new Error('');
         }
 
-        this.pageRef = await this.deps.driverManager.requestPage();
+        this.pageRef = await this.deps.driverManager.requestPage(true);
 
         return this.pageRef;
       },
@@ -312,7 +312,8 @@ export class PluginWrap implements PluginOptions, Initable {
       this.state = PluginState.created;
 
       if (this.pageRef) {
-        this.deps.driverManager.releasePage(this.pageRef);
+        this.deps.driverManager.releasePage(this.pageRef, true);
+        this.pageRef = null;
       }
     } catch (error) {
       this.errorHandler(error);
@@ -359,7 +360,8 @@ export class PluginWrap implements PluginOptions, Initable {
       this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
       if (this.pageRef) {
-        this.deps.driverManager.releasePage(this.pageRef, this.state === PluginState.error);
+        this.deps.driverManager.releasePage(this.pageRef, true);
+        this.pageRef = null;
       }
 
       await this.plugin.onDispose?.();

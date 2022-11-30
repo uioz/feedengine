@@ -11,6 +11,7 @@ import {Sequelize} from 'sequelize';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
 import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
+import {Page} from 'puppeteer-core';
 
 interface TaskMeta {
   pluginName: string;
@@ -38,6 +39,7 @@ export class TaskWrap {
   log!: TopDeps['log'];
   taskId!: number;
   successCallback: ((taskId: number) => void) | null = null;
+  pageRef: Page | null = null;
 
   constructor(private deps: TopDeps) {}
 
@@ -125,11 +127,15 @@ export class TaskWrap {
       requestPage: async () => {
         checkIsStillRunning();
 
-        const page = await this.deps.driverManager.requestPage();
+        if (this.pageRef) {
+          throw new Error('');
+        }
+
+        this.pageRef = await this.deps.driverManager.requestPage();
 
         checkIsStillRunning();
 
-        return page;
+        return this.pageRef;
       },
       store: this.deps.pluginManager.store,
     });
@@ -148,6 +154,11 @@ export class TaskWrap {
       return this.destroy();
     }
 
+    if (this.pageRef) {
+      this.deps.driverManager.releasePage(this.pageRef, true);
+      this.pageRef = null;
+    }
+
     this.state = TaskState.error;
 
     // TODO: confirm
@@ -163,6 +174,10 @@ export class TaskWrap {
     }
 
     try {
+      if (this.pageRef) {
+        this.deps.driverManager.releasePage(this.pageRef);
+        this.pageRef = null;
+      }
       this.task.destroy();
       this.successCallback = null;
       // release the page
@@ -399,6 +414,16 @@ export class TaskManager implements Closeable, Initable {
   }
 
   async close() {
+    const allQueue = [...this.taskConcurrencyQueueForPlugin.values(), this.taskConcurrencyQueue];
+
+    await Promise.all(
+      allQueue.map((queue) => {
+        queue.kill();
+
+        return queue.drained();
+      })
+    );
+
     this.log.info('close');
   }
 }

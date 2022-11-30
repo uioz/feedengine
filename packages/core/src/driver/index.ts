@@ -2,21 +2,25 @@ import * as PuppeteerCore from 'puppeteer-core';
 import type {Browser, LaunchOptions} from 'puppeteer-core';
 import {PuppeteerExtra} from 'puppeteer-extra';
 import Stealth from 'puppeteer-extra-plugin-stealth';
-import {Initable, Closeable} from '../types/index.js';
+import {Initable, AppSettings} from '../types/index.js';
 import type {TopDeps} from '../index.js';
+import * as fastq from 'fastq';
+import type {queueAsPromised} from 'fastq';
 
 const puppeteer = new PuppeteerExtra(PuppeteerCore, undefined);
 
 puppeteer.use(Stealth());
 
-export class DriverManager implements Initable, Closeable {
+export class DriverManager implements Initable {
   appManager: TopDeps['appManager'];
   log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
   #browser!: Browser;
   isOpenFirst = true;
-  activedPagePool: Array<PuppeteerCore.Page> = [];
+  activedPagePool = new Map<PuppeteerCore.Page, () => void>();
   freePagePool: Array<PuppeteerCore.Page> = [];
+  performance!: AppSettings['performance'];
+  requestPageQueue!: queueAsPromised<(value: PuppeteerCore.Page) => void>;
 
   constructor({log, appManager, messageManager}: TopDeps) {
     this.log = log.child({source: DriverManager.name});
@@ -24,7 +28,35 @@ export class DriverManager implements Initable, Closeable {
     this.messageManager = messageManager;
   }
 
+  private async getPage() {
+    let page = this.freePagePool.shift();
+
+    if (!page) {
+      if (this.isOpenFirst) {
+        this.isOpenFirst = false;
+
+        page = (await this.#browser.pages())[0];
+      } else {
+        page = await this.#browser.newPage();
+      }
+    }
+
+    return page;
+  }
+
   async init() {
+    this.performance = await this.appManager.getPerformance();
+
+    this.requestPageQueue = fastq.promise(async (resolve) => {
+      const page = await this.getPage();
+
+      resolve(page);
+
+      await new Promise<void>((resolve) =>
+        this.activedPagePool.set(page as PuppeteerCore.Page, resolve)
+      );
+    }, this.performance.pagesConcurrency);
+
     const userConfig = await this.appManager.getDriverConfig();
 
     if (userConfig.executablePath && userConfig.userDataDir) {
@@ -49,44 +81,28 @@ export class DriverManager implements Initable, Closeable {
     this.log.info(`init`);
   }
 
-  async requestPage() {
-    const freePage = this.freePagePool.shift();
-
-    if (freePage) {
-      return freePage;
+  requestPage(force = false) {
+    if (force) {
+      return this.getPage();
     }
 
-    let page: PuppeteerCore.Page;
-
-    if (this.isOpenFirst) {
-      this.isOpenFirst = false;
-
-      page = (await this.#browser.pages())[0];
-    } else {
-      page = await this.#browser.newPage();
-    }
-
-    this.activedPagePool.push(page);
-
-    return page;
+    return new Promise<PuppeteerCore.Page>((resolve) => {
+      this.requestPageQueue.push(resolve);
+    });
   }
 
   releasePage(page: PuppeteerCore.Page, force = false) {
-    this.activedPagePool.splice(
-      this.activedPagePool.findIndex((item) => item === page),
-      1
-    );
-
     if (force) {
       page.close();
     } else {
       this.freePagePool.push(page);
     }
-  }
 
-  async close() {
-    await this.#browser.close();
+    const release = this.activedPagePool.get(page);
 
-    this.log.info(`close`);
+    if (release) {
+      this.activedPagePool.delete(page);
+      release();
+    }
   }
 }
