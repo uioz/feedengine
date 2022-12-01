@@ -8,9 +8,9 @@
   </VContainer>
 </template>
 <script setup lang="ts">
-import type {PluginStateApi} from 'feedengine';
+import type {LivingApi} from 'feedengine';
 import {useRequest} from '@/utils/request';
 import PluginCard from '@/components/index/PluginCard.vue';
 
-const {data} = useRequest('/plugins/state').json<Array<PluginStateApi>>();
+const {data} = useRequest('/living').json<Array<LivingApi>>();
 </script>

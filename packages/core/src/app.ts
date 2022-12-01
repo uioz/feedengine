@@ -2,6 +2,7 @@ import {TopDeps} from './index.js';
 import type {Initable, Closeable} from './types/index.js';
 import process from 'node:process';
 import {AppSettings, PluginPerformanceSettings} from './types/settings.js';
+import {PluginState} from './plugins/index.js';
 
 export enum MessageType {
   'restart',
@@ -178,6 +179,11 @@ export class AppManager implements Initable, Closeable {
     }
 
     this.deps.pluginManager.create();
+
+    this.deps.pluginManager.hook.once(`all-${PluginState[PluginState.actived]}`, () => {
+      this.deps.taskManager.active();
+      this.deps.scheduleManager.active();
+    });
 
     await this.deps.serverManager.init();
   }

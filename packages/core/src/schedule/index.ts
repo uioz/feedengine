@@ -1,5 +1,5 @@
 import type {TopDeps} from '../index.js';
-import type {Closeable} from '../types/index.js';
+import type {Closeable, ScheduleRes} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
 import type {TaskWrap} from '../task/index.js';
 
@@ -216,14 +216,17 @@ export class ScheduleManager implements Closeable {
     });
   }
 
-  async listAllSchedules() {
+  async listAllSchedules(): Promise<ScheduleRes> {
     const schedules = await this.schedulesModel.findAll({
       where: {
         id: [...this.refs.keys()],
       },
+      include: this.taskManager.tasksModel,
     });
 
-    schedules.map(({id, TaskId: taskId, type, lastRun, createdAt, trigger}) => {
+    // TODO: 测试sequelize挂载 task 表的位置, 定义表类型, 下面扩展 tasks 的字段
+
+    return schedules.map(({id, TaskId: taskId, type, lastRun, createdAt, trigger}) => {
       return {
         id,
         taskId,

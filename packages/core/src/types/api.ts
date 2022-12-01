@@ -1,6 +1,8 @@
 import {PluginState as PS} from './plugin.js';
+import {TaskState} from '../task/index.js';
+import {ScheduleType} from '../schedule/index.js';
 
-export interface LivingApi {
+export interface LivingRes {
   name: string;
   version: string;
   state: PS;
@@ -15,12 +17,30 @@ export interface LivingApi {
   };
 }
 
-export type TasksApi = Array<{
-  pluginName: string;
-  tasks: Array<{
+export type TasksRes = Record<
+  string,
+  Array<{
     taskName: string;
     setup: boolean;
     description?: string;
     link?: string;
-  }>;
-}>;
+    instances: Array<{
+      id: number;
+      name: string | null;
+      createdAt: Date;
+      settings: any | null;
+    }>;
+  }>
+>;
+
+export interface Schedule {
+  id: number;
+  taskId: number;
+  type: ScheduleType;
+  lastRun: Date | null;
+  createdAt: Date;
+  trigger: string | null;
+  state?: TaskState;
+}
+
+export type ScheduleRes = Array<Schedule>;

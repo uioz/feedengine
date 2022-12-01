@@ -5,6 +5,7 @@ import type {
   AppSettings,
   Initable,
   Task,
+  TasksRes,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
@@ -12,6 +13,7 @@ import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
 import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 import {Page} from 'puppeteer-core';
+import {PluginState} from '../plugins/index.js';
 
 interface TaskMeta {
   pluginName: string;
@@ -21,7 +23,7 @@ interface TaskMeta {
   tasksInRunning: Array<TaskWrap>;
 }
 
-enum TaskState {
+export enum TaskState {
   pending,
   running,
   finished,
@@ -197,6 +199,7 @@ export class TaskManager implements Closeable, Initable {
   deps: TopDeps;
   messageManager: TopDeps['messageManager'];
   allregisteredTask = new Map<string, TaskMeta>();
+  registeredTree = new Map<string, Set<string>>();
   tasksModel: TopDeps['storageManager']['tasksModel'];
   buffer: Array<[string, string, TaskConstructor]> = [];
   isReady = false;
@@ -254,7 +257,9 @@ export class TaskManager implements Closeable, Initable {
         },
       });
     }
+  }
 
+  active() {
     this.isReady = true;
 
     if (this.buffer.length) {
@@ -264,19 +269,29 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  register(pluginName: string, taskName: string, task: TaskConstructor) {
+  register(pluginName: string, taskName: string, taskConstructor: TaskConstructor) {
     if (this.isReady) {
-      this.allregisteredTask.set(`${pluginName}@${taskName}`, {
-        taskConstructor: task,
-        pluginName,
-        taskName,
-        pluginPerformanceSettings: this.performance.plugins.find(
-          (item) => item.name === pluginName
-        )!,
-        tasksInRunning: [],
-      });
+      if (this.deps.pluginManager.pluginStates.get(PluginState.actived)!.has(pluginName)) {
+        this.allregisteredTask.set(`${pluginName}@${taskName}`, {
+          taskConstructor,
+          pluginName,
+          taskName,
+          pluginPerformanceSettings: this.performance.plugins.find(
+            (item) => item.name === pluginName
+          )!,
+          tasksInRunning: [],
+        });
+
+        const tasks = this.registeredTree.get(pluginName);
+
+        if (tasks) {
+          tasks.add(taskName);
+        } else {
+          this.registeredTree.set(pluginName, new Set([taskName]));
+        }
+      }
     } else {
-      this.buffer.push([pluginName, taskName, task]);
+      this.buffer.push([pluginName, taskName, taskConstructor]);
     }
   }
 
@@ -293,6 +308,8 @@ export class TaskManager implements Closeable, Initable {
         this.allregisteredTask.delete(key);
       }
     }
+
+    this.registeredTree.delete(pluginName);
   }
 
   // for GET /living
@@ -313,8 +330,10 @@ export class TaskManager implements Closeable, Initable {
         plugin: pluginNames,
         task: taskNames,
       },
-      group: ['plugin', 'task'],
+      // group: ['plugin', 'task'],
     });
+
+    // TODO: 需要再次根据注册的任务进行过滤, 不同插件同任务名称, 其中一个插件注册了一个同名任务, 会导致另外一个插件也会被查询出来
 
     const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
 
@@ -335,29 +354,47 @@ export class TaskManager implements Closeable, Initable {
 
   // for GET /tasks
   async getAllRegisterTaskGroupByPlugin() {
-    const plugin = new Map<
-      string,
-      Array<{taskName: string; setup: boolean; description?: string; link?: string}>
-    >();
+    const data: TasksRes = {};
 
-    for (const {pluginName, taskName, taskConstructor} of this.allregisteredTask.values()) {
-      const tasks = plugin.get(pluginName);
-
+    for (const {
+      pluginName,
+      taskName,
+      taskConstructor: {setup, description, link},
+    } of this.allregisteredTask.values()) {
       const temp = {
         taskName,
-        setup: !!taskConstructor.setup,
-        description: taskConstructor.description,
-        link: taskConstructor.link,
+        setup: !!setup,
+        description,
+        link,
+        instances: [],
       };
 
-      if (tasks) {
-        tasks.push(temp);
+      if (data[pluginName]) {
+        data[pluginName].push(temp);
       } else {
-        plugin.set(pluginName, [temp]);
+        data[pluginName] = [temp];
       }
     }
 
-    return [...plugin.entries()].map(([pluginName, tasks]) => ({pluginName, tasks}));
+    const tasks = await this.tasksModel.findAll({
+      where: {
+        plugin: [...this.registeredTree.keys()],
+        task: [...this.registeredTree.values()].map((set) => [...set]).flat(),
+      },
+    });
+
+    for (const {plugin, task, name, id, settings, createdAt} of tasks) {
+      if (this.registeredTree.get(plugin)?.has(task)) {
+        data[plugin]!.find(({taskName}) => taskName === task)!.instances.push({
+          name,
+          id,
+          settings,
+          createdAt,
+        });
+      }
+    }
+
+    return data;
   }
 
   execTask(taskId: number, successCallback: (taskId: number) => void) {

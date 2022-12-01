@@ -189,12 +189,12 @@ export class PluginWrap implements PluginOptions, Initable {
         return this.deps.storageManager.sequelize.define(this.name, attributes, options);
       },
       getSequelize: () => this.deps.storageManager.sequelize,
-      registerTask: (taskName: string, task: TaskConstructor) => {
+      registerTask: (taskName: string, taskConstructor: TaskConstructor) => {
         if (this.state !== PluginState.ready) {
           throw new Error('the register only works before any hooks execution');
         }
 
-        this.deps.taskManager.register(this.name, taskName, task);
+        this.deps.taskManager.register(this.name, taskName, taskConstructor);
       },
       requestPage: async () => {
         if (this.state !== PluginState.init) {
@@ -447,6 +447,7 @@ export class PluginManager implements Initable, Closeable {
     [PluginState.disposed, new Set()],
     [PluginState.error, new Set()],
   ]);
+  hook!: Hook;
 
   constructor(private deps: TopDeps) {
     this.log = deps.log.child({source: PluginManager.name});
@@ -468,9 +469,7 @@ export class PluginManager implements Initable, Closeable {
 
     const loadedPluginNamesSet: Set<string> = new Set();
 
-    const hook = new Hook(loadedPluginNamesSet, this.pluginStates);
-
-    hook.once(`all-${PluginState[PluginState.actived]}`, () => this.deps.scheduleManager.active());
+    this.hook = new Hook(loadedPluginNamesSet, this.pluginStates);
 
     this.loadedPlugins = (
       await Promise.all(
@@ -487,7 +486,7 @@ export class PluginManager implements Initable, Closeable {
                 pluginName,
                 nodeModulesDir,
                 this.deps,
-                hook,
+                this.hook,
                 this.store,
                 this.pluginStates
               );

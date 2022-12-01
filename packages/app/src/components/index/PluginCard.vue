@@ -16,7 +16,7 @@
       </template>
     </VToolbar>
     <v-progress-linear
-      :active="state !== 'onActive'"
+      :active="state !== 'actived'"
       color="success"
       indeterminate
     ></v-progress-linear>
@@ -24,12 +24,12 @@
 </template>
 
 <script setup lang="ts">
-import type {PluginStateApi} from 'feedengine';
+import type {LivingApi} from 'feedengine';
 
 defineProps<{
-  name: PluginStateApi['name'];
-  version: PluginStateApi['version'];
-  state: PluginStateApi['state'];
-  app?: PluginStateApi['app'];
+  name: LivingApi['name'];
+  version: LivingApi['version'];
+  state: LivingApi['state'];
+  app?: LivingApi['app'];
 }>();
 </script>

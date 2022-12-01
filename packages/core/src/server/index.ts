@@ -1,7 +1,7 @@
 import {Initable, Closeable} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {fastify, type FastifyInstance} from 'fastify';
-import {appRoute, messageRoute, pluginRoute} from './api/index.js';
+import {appRoute, messageRoute, pluginRoute, taskRoute, scheduleRoute} from './api/index.js';
 
 export class ServerManager implements Initable, Closeable {
   deps: TopDeps;
@@ -28,6 +28,16 @@ export class ServerManager implements Initable, Closeable {
     });
 
     this.server.register(pluginRoute, {
+      deps,
+      prefix: '/api',
+    });
+
+    this.server.register(taskRoute, {
+      deps,
+      prefix: '/api',
+    });
+
+    this.server.register(scheduleRoute, {
       deps,
       prefix: '/api',
     });
