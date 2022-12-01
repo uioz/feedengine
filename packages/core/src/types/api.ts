@@ -1,6 +1,6 @@
 import {PluginState as PS} from './plugin.js';
 
-export interface PluginStateApi {
+export interface LivingApi {
   name: string;
   version: string;
   state: PS;
@@ -14,3 +14,13 @@ export interface PluginStateApi {
     settings?: string | true;
   };
 }
+
+export type TasksApi = Array<{
+  pluginName: string;
+  tasks: Array<{
+    taskName: string;
+    setup: boolean;
+    description?: string;
+    link?: string;
+  }>;
+}>;

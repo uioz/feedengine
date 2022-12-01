@@ -174,7 +174,7 @@ export class AppManager implements Initable, Closeable {
     ]);
 
     if (!this.firstBooting) {
-      await this.deps.driverManager.init();
+      // await this.deps.driverManager.init();
     }
 
     this.deps.pluginManager.create();

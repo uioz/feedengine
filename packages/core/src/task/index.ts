@@ -180,7 +180,6 @@ export class TaskWrap {
       }
       this.task.destroy();
       this.successCallback = null;
-      // release the page
     } catch (error) {
       this.log.error(error);
     } finally {
@@ -193,6 +192,7 @@ export class TaskWrap {
 }
 
 export class TaskManager implements Closeable, Initable {
+  closed = false;
   log: TopDeps['log'];
   deps: TopDeps;
   messageManager: TopDeps['messageManager'];
@@ -295,7 +295,8 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  async getAllTaskStateGroupByPlugin() {
+  // for GET /living
+  async getAllLivingTaskStatusGroupByPlugin() {
     const pluginNames = [];
     const taskNames = [];
 
@@ -332,7 +333,38 @@ export class TaskManager implements Closeable, Initable {
     return temp;
   }
 
+  // for GET /tasks
+  async getAllRegisterTaskGroupByPlugin() {
+    const plugin = new Map<
+      string,
+      Array<{taskName: string; setup: boolean; description?: string; link?: string}>
+    >();
+
+    for (const {pluginName, taskName, taskConstructor} of this.allregisteredTask.values()) {
+      const tasks = plugin.get(pluginName);
+
+      const temp = {
+        taskName,
+        setup: !!taskConstructor.setup,
+        description: taskConstructor.description,
+        link: taskConstructor.link,
+      };
+
+      if (tasks) {
+        tasks.push(temp);
+      } else {
+        plugin.set(pluginName, [temp]);
+      }
+    }
+
+    return [...plugin.entries()].map(([pluginName, tasks]) => ({pluginName, tasks}));
+  }
+
   execTask(taskId: number, successCallback: (taskId: number) => void) {
+    if (this.closed) {
+      throw new Error('');
+    }
+
     for (const {tasksInRunning} of this.allregisteredTask.values()) {
       for (const task of tasksInRunning) {
         if (taskId === task.taskId) {
@@ -414,6 +446,8 @@ export class TaskManager implements Closeable, Initable {
   }
 
   async close() {
+    this.closed = true;
+
     const allQueue = [...this.taskConcurrencyQueueForPlugin.values(), this.taskConcurrencyQueue];
 
     await Promise.all(
