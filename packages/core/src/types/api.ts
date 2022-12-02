@@ -41,6 +41,9 @@ export interface Schedule {
   createdAt: Date;
   trigger: string | null;
   state?: TaskState;
+  plugin: string;
+  task: string;
+  name: string | null;
 }
 
 export type ScheduleRes = Array<Schedule>;

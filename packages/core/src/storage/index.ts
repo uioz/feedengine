@@ -56,6 +56,8 @@ class Schedules extends Model<InferAttributes<Schedules>, InferCreationAttribute
 
   declare createTask: BelongsToCreateAssociationMixin<Tasks>;
 
+  declare Task: NonAttribute<Tasks>;
+
   declare static associations: {
     Task: Association<Schedules, Tasks>;
   };
@@ -162,6 +164,10 @@ export class StorageManager implements Initable, Closeable {
     );
 
     this.tasksModel.hasMany(this.schedulesModel, {
+      foreignKey: {
+        allowNull: false,
+      },
+      // TODO: 测试删除 Task id = 1 的记录, 看看是否会清空 Schedule
       onDelete: 'CASCADE',
     });
     this.schedulesModel.belongsTo(this.tasksModel);

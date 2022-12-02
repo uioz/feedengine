@@ -224,19 +224,22 @@ export class ScheduleManager implements Closeable {
       include: this.taskManager.tasksModel,
     });
 
-    // TODO: 测试sequelize挂载 task 表的位置, 定义表类型, 下面扩展 tasks 的字段
-
-    return schedules.map(({id, TaskId: taskId, type, lastRun, createdAt, trigger}) => {
-      return {
-        id,
-        taskId,
-        type,
-        lastRun,
-        createdAt,
-        trigger,
-        state: this.refs.get(id)?.taskRef?.state,
-      };
-    });
+    return schedules.map(
+      ({id, TaskId: taskId, type, lastRun, createdAt, trigger, Task: {plugin, task, name}}) => {
+        return {
+          id,
+          taskId,
+          type,
+          lastRun,
+          createdAt,
+          trigger,
+          state: this.refs.get(id)?.taskRef?.state,
+          plugin,
+          task,
+          name,
+        };
+      }
+    );
   }
 
   async close() {

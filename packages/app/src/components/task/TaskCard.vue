@@ -1,42 +1,74 @@
 <template>
-  <VCard>
+  <VCard rounded="lg" elevation="0">
     <VToolbar>
       <VToolbarTitle class="text-uppercase text-subtitle-2">{{ pluginName }}</VToolbarTitle>
     </VToolbar>
-    <VList density="compact">
-      <VListItem v-for="item of tasks" :key="item.taskName">
-        <VListItemTitle>
+    <VExpansionPanels variant="accordion" multiple>
+      <VExpansionPanel v-for="item of tasks" :key="item.taskName">
+        <VExpansionPanelTitle>
           {{ item.taskName
           }}<VChip class="rounded-pill ml-2" size="x-small">{{
             item.setup ? '可创建' : '不可创建'
           }}</VChip>
-        </VListItemTitle>
-        <div v-if="item.description" :class="$style.subtitle">
-          {{ item.description }}
-        </div>
-        <template #append v-if="item.link">
-          <VBtn
-            v-if="item.link?.startsWith('/') === false"
-            icon="settings"
-            :to="`${pluginName}/${item.link}`"
-            variant="plain"
-          ></VBtn>
-          <VBtn v-else icon="settings" :href="item.link" variant="plain"></VBtn>
-        </template>
-      </VListItem>
-    </VList>
+          <template v-if="item.link">
+            <VBtn
+              v-if="item.link?.startsWith('/') === false"
+              size="small"
+              icon="open_in_new"
+              :to="`${pluginName}/${item.link}`"
+              variant="plain"
+            ></VBtn>
+            <VBtn v-else icon="open_in_new" size="small" :href="item.link" variant="plain"></VBtn>
+          </template>
+        </VExpansionPanelTitle>
+        <VExpansionPanelText>
+          <VSheet v-if="item.description" :class="$style.subtitle">
+            {{ item.description }}
+          </VSheet>
+          <VTable>
+            <thead>
+              <tr>
+                <th class="text-left">id</th>
+                <th class="text-left">名称</th>
+                <th class="text-left">创建日期</th>
+                <th class="text-left">设置</th>
+                <th class="text-left">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="instance in item.instances" :key="instance.id">
+                <td>{{ instance.id }}</td>
+                <td>{{ instance.name }}</td>
+                <td>{{ instance.createdAt }}</td>
+                <td>{{ instance.settings }}</td>
+                <td>
+                  <VBtn size="small" rounded="lg" variant="text" icon="edit"></VBtn>
+                  <VBtn size="small" rounded="lg" variant="text" icon="delete"></VBtn>
+                </td>
+              </tr>
+            </tbody>
+          </VTable>
+        </VExpansionPanelText>
+      </VExpansionPanel>
+    </VExpansionPanels>
   </VCard>
 </template>
 
 <script setup lang="ts">
 defineProps<{
   pluginName: string;
-  tasks: Array<{
+  tasks: {
     taskName: string;
     setup: boolean;
-    description?: string;
-    link?: string;
-  }>;
+    description?: string | undefined;
+    link?: string | undefined;
+    instances: {
+      id: number;
+      name: string | null;
+      createdAt: Date;
+      settings: any;
+    }[];
+  }[];
 }>();
 </script>
 

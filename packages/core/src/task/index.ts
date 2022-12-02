@@ -330,22 +330,22 @@ export class TaskManager implements Closeable, Initable {
         plugin: pluginNames,
         task: taskNames,
       },
-      // group: ['plugin', 'task'],
+      group: ['plugin', 'task'],
     });
-
-    // TODO: 需要再次根据注册的任务进行过滤, 不同插件同任务名称, 其中一个插件注册了一个同名任务, 会导致另外一个插件也会被查询出来
 
     const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
 
     for (const {plugin, task, taskCount} of data) {
-      if (temp[plugin]) {
-        temp[plugin].push({
-          task,
-          taskCount,
-          working: this.allregisteredTask.get(`${plugin}@${task}`)?.tasksInRunning.length ?? 0,
-        });
-      } else {
-        temp[plugin] = [{task, taskCount, working: 0}];
+      if (this.registeredTree.get(plugin)?.has(task)) {
+        if (temp[plugin]) {
+          temp[plugin].push({
+            task,
+            taskCount,
+            working: this.allregisteredTask.get(`${plugin}@${task}`)?.tasksInRunning.length ?? 0,
+          });
+        } else {
+          temp[plugin] = [{task, taskCount, working: 0}];
+        }
       }
     }
 
