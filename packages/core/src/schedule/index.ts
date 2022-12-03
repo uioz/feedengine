@@ -1,7 +1,7 @@
 import type {TopDeps} from '../index.js';
 import type {Closeable, ScheduleRes} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
-import type {TaskWrap} from '../task/index.js';
+import {TaskWrap} from '../task/index.js';
 
 export enum ScheduleType {
   core,
@@ -221,7 +221,10 @@ export class ScheduleManager implements Closeable {
       where: {
         id: [...this.refs.keys()],
       },
-      include: this.taskManager.tasksModel,
+      include: {
+        model: this.taskManager.tasksModel,
+        required: true,
+      },
     });
 
     return schedules.map(
@@ -240,6 +243,26 @@ export class ScheduleManager implements Closeable {
         };
       }
     );
+  }
+
+  async execManualTask(id: number) {
+    const scheduleRef = this.refs.get(id);
+
+    if (scheduleRef === undefined) {
+      throw new Error('');
+    }
+
+    const result = await this.schedulesModel.findByPk(id);
+
+    if (result === null) {
+      throw new Error('');
+    }
+
+    if (result.type !== ScheduleType.manual) {
+      throw new Error('');
+    }
+
+    scheduleRef.taskRef = this.taskManager.execTask(result.TaskId, this.taskSuccessCallback);
   }
 
   async close() {

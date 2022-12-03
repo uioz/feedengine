@@ -17,13 +17,24 @@ import {
   Association,
 } from 'sequelize';
 
-class PluginSettings extends Model<
+export class Plugins extends Model<InferAttributes<Plugins>, InferCreationAttributes<Plugins>> {
+  declare id: CreationOptional<number>;
+  declare name: string;
+  declare version: string;
+}
+
+export class PluginSettings extends Model<
   InferAttributes<PluginSettings>,
   InferCreationAttributes<PluginSettings>
 > {
-  declare name: string;
-  declare version: string;
+  declare PluginId: ForeignKey<Tasks['id']>;
   declare settings: any;
+
+  declare Plugin: NonAttribute<Plugins>;
+
+  declare static associations: {
+    Plugin: Association<PluginSettings, Plugins>;
+  };
 }
 
 class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>> {
@@ -67,6 +78,7 @@ export class StorageManager implements Initable, Closeable {
   log: TopDeps['log'];
   rootDir: string;
   sequelize!: Sequelize;
+  pluginModel: ModelStatic<Plugins>;
   tasksModel: ModelStatic<Tasks>;
   schedulesModel: ModelStatic<Schedules>;
   settingsModel: ModelStatic<PluginSettings>;
@@ -84,18 +96,32 @@ export class StorageManager implements Initable, Closeable {
       },
     });
 
-    this.settingsModel = PluginSettings.init(
+    this.pluginModel = Plugins.init(
       {
-        name: {
-          type: DataTypes.TEXT,
+        id: {
+          type: DataTypes.INTEGER,
+          autoIncrement: true,
           primaryKey: true,
-          unique: true,
           allowNull: false,
         },
         version: {
           type: DataTypes.TEXT,
           allowNull: false,
         },
+        name: {
+          type: DataTypes.TEXT,
+          unique: true,
+          allowNull: false,
+        },
+      },
+      {
+        sequelize: this.sequelize,
+        timestamps: false,
+      }
+    );
+
+    this.settingsModel = PluginSettings.init(
+      {
         settings: {
           type: DataTypes.JSON,
           allowNull: false,
@@ -106,6 +132,16 @@ export class StorageManager implements Initable, Closeable {
         timestamps: false,
       }
     );
+
+    this.settingsModel.belongsTo(this.pluginModel, {
+      foreignKey: {
+        allowNull: false,
+      },
+      // TODO: 测试删除 Task id = 1 的记录, 看看是否会清空 Schedule
+      onDelete: 'CASCADE',
+    });
+
+    this.pluginModel.hasOne(this.settingsModel);
 
     this.tasksModel = Tasks.init(
       {

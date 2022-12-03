@@ -177,11 +177,7 @@ export class PluginWrap implements PluginOptions, Initable {
       },
       getSettings: () => this.deps.settingManager.getPluginSettings(this.name),
       setSettings: (settings: unknown) =>
-        this.deps.settingManager.setPluginSettings({
-          name: this.name,
-          version: this.version,
-          settings,
-        }),
+        this.deps.settingManager.setPluginSettings(this.name, settings),
       getMainModel: <M extends Model, TAttributes = Attributes<M>>(
         attributes: ModelAttributes<M, TAttributes>,
         options?: ModelOptions<M>

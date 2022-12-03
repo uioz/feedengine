@@ -116,6 +116,7 @@ export class TaskWrap {
         return this.ioQueue.push(async () => {
           checkIsStillRunning();
           if (timeout) {
+            // TODO: 记录执行时间戳, 而不是任何任务都间隔固定时间
             await new Promise((resolve) => setTimeout(resolve, timeout));
 
             checkIsStillRunning();

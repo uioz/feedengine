@@ -17,7 +17,15 @@
         <td>{{ item.state }}</td>
         <td>{{ item.lastRun }}</td>
         <td>{{ item.createdAt }}</td>
-        <td><VBtn rounded="lg" size="small" variant="tonal" icon="play_arrow"></VBtn></td>
+        <td>
+          <VBtn
+            rounded="lg"
+            size="small"
+            variant="tonal"
+            icon="play_arrow"
+            @click="handleManualExec(item.id)"
+          ></VBtn>
+        </td>
       </tr>
     </tbody>
   </VTable>
@@ -26,6 +34,7 @@
 import {useScheduleStore, ScheduleType} from '@/stores/schedule';
 import type {ScheduleRes} from 'feedengine';
 import {computed} from 'vue';
+import {useRequest} from '@/utils/request';
 
 const scheduleStore = useScheduleStore();
 
@@ -34,4 +43,8 @@ const props = defineProps<{
 }>();
 
 const data = computed(() => (scheduleStore as any)[props.type] as ScheduleRes);
+
+async function handleManualExec(id: number) {
+  await useRequest(`/schedule/${id}/exec`);
+}
 </script>
