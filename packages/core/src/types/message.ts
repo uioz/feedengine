@@ -1,5 +1,6 @@
 import type {NotificationType} from '../message/index.js';
 import type {PluginState} from './plugin.js';
+import type {TaskState} from './task.js';
 
 export interface MessageBase {
   channel: string;
@@ -46,7 +47,12 @@ export interface PluginProgress extends ProgressMessage {
   state: PluginState;
 }
 
+export interface TaskProgress extends ProgressMessage {
+  channel: 'TaskProgress';
+  state: TaskState;
+}
+
 export interface ProgressHandler<T extends ProgressMessage> {
-  send: (data: Omit<T, 'channel' | 'source'>) => this;
+  send: (data: Partial<Omit<T, 'channel' | 'source'>>) => this;
   end: () => void;
 }

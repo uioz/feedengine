@@ -6,6 +6,8 @@ import type {
   Initable,
   Task,
   TasksRes,
+  ProgressHandler,
+  TaskProgress,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
@@ -13,6 +15,7 @@ import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
 import {Page} from 'puppeteer-core';
 import {PluginState} from '../plugins/index.js';
+import {NotificationType} from '../message/index.js';
 
 interface TaskMeta {
   pluginName: string;
@@ -42,6 +45,7 @@ export class TaskWrap {
   pluginId!: number;
   successCallback: ((taskId: number) => void) | null = null;
   pageRef: Page | null = null;
+  progress!: ProgressHandler<TaskProgress>;
 
   constructor(private deps: TopDeps) {}
 
@@ -51,7 +55,9 @@ export class TaskWrap {
 
   public set state(v: TaskState) {
     this.#state = v;
-    // TODO: send the task's state to client
+    this.progress.send({
+      state: TaskState[v] as any,
+    });
     this.log.info(`state ${TaskState[v]}`);
   }
 
@@ -70,6 +76,11 @@ export class TaskWrap {
     this.settings = settings;
     this.ioQueue = ioQueue;
     this.successCallback = successCallback;
+    this.progress = this.deps.messageManager.progress('TaskProgress', taskMeta.taskName);
+
+    this.progress.send({
+      state: 'pending',
+    });
 
     taskMeta.tasksInRunning.push(this);
 
@@ -92,6 +103,16 @@ export class TaskWrap {
       }
     };
 
+    const no = (type: NotificationType) =>
+      this.deps.messageManager.notification(
+        `${this.taskMeta.pluginName}@${this.taskMeta.taskName}`
+      )[type];
+
+    const co = (type: NotificationType) =>
+      this.deps.messageManager.confirm(`${this.taskMeta.pluginName}@${this.taskMeta.taskName}`)[
+        type
+      ];
+
     this.task = this.taskMeta.taskConstructor.setup!({
       taskName: this.taskMeta.taskName,
       pluginName: this.taskMeta.pluginName,
@@ -102,6 +123,22 @@ export class TaskWrap {
       getSequelize: () => this.deps.storageManager.sequelize,
       exit: () => {
         throw new ExitError();
+      },
+      window: {
+        confirm: {
+          warn: co(NotificationType.warn),
+          error: co(NotificationType.error),
+          info: co(NotificationType.info),
+        },
+        notification: {
+          warn: no(NotificationType.warn),
+          error: no(NotificationType.error),
+          info: no(NotificationType.info),
+        },
+        progress: (options) => {
+          checkIsStillRunning();
+          this.progress.send(options);
+        },
       },
       ioQueue: (timeout?: number) => (job) => {
         checkIsStillRunning();
@@ -171,24 +208,21 @@ export class TaskWrap {
       return this.destroy();
     }
 
-    if (this.pageRef) {
-      this.deps.driverManager.releasePage(this.pageRef, true);
-      this.pageRef = null;
-    }
-
-    this.state = TaskState.error;
-
     // TODO: confirm
-
     this.log.error(error);
 
-    this.destroy();
+    if (this.state !== TaskState.finished) {
+      this.state = TaskState.error;
+      this.destroy();
+    }
   }
 
   destroy() {
     if (this.state !== TaskState.error) {
       this.state = TaskState.finished;
     }
+
+    this.progress.end();
 
     try {
       if (this.pageRef) {

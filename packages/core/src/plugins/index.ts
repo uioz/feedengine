@@ -12,6 +12,7 @@ import {
   Initable,
   Closeable,
   PluginContextStore,
+  ProgressMessage,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -47,6 +48,7 @@ export class PluginWrap implements PluginOptions, Initable {
   fastifyPluginRegister?: FastifyPluginCallback<any>;
   progress: ProgressHandler<PluginProgress>;
   pageRef: Page | null = null;
+  log: TopDeps['log'];
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -69,6 +71,7 @@ export class PluginWrap implements PluginOptions, Initable {
         this.onActive();
       }
     });
+    this.log = this.deps.log.child({source: this.name});
 
     this.progress = this.deps.messageManager.progress<PluginProgress>('PluginProgress', name);
   }
@@ -83,6 +86,12 @@ export class PluginWrap implements PluginOptions, Initable {
     this.pluginStates.get(v)?.add(this.name);
 
     this.#state = v;
+
+    this.progress.send({
+      state: PluginState[v] as any,
+    });
+
+    this.log.info(`state ${PluginState[v]}`);
 
     this.hook.emit(PluginState[v], this.name);
   }
@@ -118,10 +127,6 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async init() {
-    this.progress.send({
-      state: 'init',
-    });
-
     const no = (type: NotificationType) => this.deps.messageManager.notification(this.name)[type];
 
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
@@ -131,7 +136,7 @@ export class PluginWrap implements PluginOptions, Initable {
       currentPluginVerison: this.version,
       feedengineVersion: this.deps.feedengine.version,
       name: this.name,
-      log: this.deps.log.child({source: this.name}),
+      log: this.log,
       window: {
         confirm: {
           warn: co(NotificationType.warn),
@@ -143,6 +148,8 @@ export class PluginWrap implements PluginOptions, Initable {
           error: no(NotificationType.error),
           info: no(NotificationType.info),
         },
+        progress: <T extends ProgressMessage>(options: Partial<Omit<T, 'channel' | 'source'>>) =>
+          this.progress.send(options),
       },
       exit: () => {
         throw new ExitError();
@@ -242,15 +249,9 @@ export class PluginWrap implements PluginOptions, Initable {
     } catch (error) {
       this.errorHandler(error);
     }
-
-    this.context.log.info('init');
   }
 
   async onCreate() {
-    this.progress.send({
-      state: 'created',
-    });
-
     const hook = this.hook;
 
     try {
@@ -307,23 +308,15 @@ export class PluginWrap implements PluginOptions, Initable {
     } catch (error) {
       this.errorHandler(error);
     }
-
-    this.context.log.info('onCreate');
   }
 
   onActive() {
-    this.progress.send({
-      state: 'actived',
-    });
-
     try {
       this.plugin.onActive?.();
       this.state = PluginState.actived;
     } catch (error) {
       this.errorHandler(error);
     }
-
-    this.context.log.info('onActive');
   }
 
   async onDispose() {
@@ -331,13 +324,9 @@ export class PluginWrap implements PluginOptions, Initable {
       this.state = PluginState.disposed;
     }
 
-    try {
-      this.progress
-        .send({
-          state: 'disposed',
-        })
-        .end();
+    this.progress.end();
 
+    try {
       // TODO: 清空 store 上挂载的资源
       for (const [key, sets] of this.eventListener.entries()) {
         for (const handler of sets) {
@@ -357,8 +346,6 @@ export class PluginWrap implements PluginOptions, Initable {
     } catch (error) {
       this.errorHandler(error, false);
     }
-
-    this.context.log.info('onDispose');
   }
 
   private errorHandler(error: unknown, destory = true) {
@@ -366,15 +353,11 @@ export class PluginWrap implements PluginOptions, Initable {
       return this.onDispose();
     }
 
+    if (this.state !== PluginState.disposed) {
+      this.state = PluginState.error;
+    }
+
     this.context.log.error(error);
-
-    this.state = PluginState.error;
-
-    this.progress
-      .send({
-        state: 'error',
-      })
-      .end();
 
     this.context.window.confirm.error(error + '', [
       {

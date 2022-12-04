@@ -1,7 +1,10 @@
 import type {Logger} from 'pino';
 import type {Sequelize} from 'sequelize';
-import type {PluginContextStore} from './index.js';
+import type {PluginContextStore, ConfimAction, TaskProgress} from './index.js';
 import type {Page} from 'puppeteer-core';
+import {TaskState as TS} from '../task/index.js';
+
+export type TaskState = keyof typeof TS;
 
 export interface Task {
   run(): Promise<void>;
@@ -18,19 +21,19 @@ export interface TaskContext<T> {
   getSequelize(): Sequelize;
   exit: () => void;
   requestPage: () => Promise<Page>;
-  // window: {
-  //   notification: {
-  //     warn(message: string): void;
-  //     error(message: string): void;
-  //     info(message: string): void;
-  //   };
-  //   confirm: {
-  //     warn(message: string, actions: Array<ConfimAction>): void;
-  //     error(message: string, actions: Array<ConfimAction>): void;
-  //     info(message: string, actions: Array<ConfimAction>): void;
-  //   };
-  //   progress(): void;
-  // };
+  window: {
+    notification: {
+      warn(message: string): void;
+      error(message: string): void;
+      info(message: string): void;
+    };
+    confirm: {
+      warn(message: string, actions: Array<ConfimAction>): void;
+      error(message: string, actions: Array<ConfimAction>): void;
+      info(message: string, actions: Array<ConfimAction>): void;
+    };
+    progress(options: Pick<TaskProgress, 'message' | 'progress'>): void;
+  };
   store: PluginContextStore;
   ioQueue: (interval?: number) => <T>(job: () => Promise<T>) => Promise<T>;
 }
