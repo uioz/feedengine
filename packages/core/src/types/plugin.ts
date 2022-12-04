@@ -1,17 +1,10 @@
 import type {Logger} from 'pino';
-import {ConfimAction, PluginSettings, TaskConstructor} from './index.js';
+import {ConfimAction, PluginSettings, TaskConstructor, PluginProgress} from './index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
 import type {TopDeps} from '../index.js';
-import type {
-  Model,
-  Attributes,
-  ModelAttributes,
-  ModelOptions,
-  ModelStatic,
-  Sequelize,
-} from 'sequelize';
+import type {Sequelize} from 'sequelize';
 import {PluginState as PS} from '../plugins/index.js';
 import type {Page} from 'puppeteer-core';
 
@@ -53,15 +46,12 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
       error(message: string, actions?: Array<ConfimAction>): void;
       info(message: string, actions?: Array<ConfimAction>): void;
     };
+    progress(options: Pick<PluginProgress, 'message' | 'progress'>): void;
   };
   exit(): void;
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
   getSettings<T>(): Promise<PluginSettings<T> | null>;
   setSettings(setting: unknown): Promise<void>;
-  getMainModel<M extends Model, TAttributes = Attributes<M>>(
-    attributes: ModelAttributes<M, TAttributes>,
-    options?: ModelOptions<M>
-  ): ModelStatic<M>;
   getSequelize(): Sequelize;
   registerTask(taskName: string, task: TaskConstructor): void;
   requestPage(): Page;

@@ -1,4 +1,5 @@
 import type {NotificationType} from '../message/index.js';
+import type {PluginState} from './plugin.js';
 
 export interface MessageBase {
   channel: string;
@@ -35,14 +36,14 @@ export interface ConfirmMessage extends Notification, MessageConsumable {
 }
 
 export interface ProgressMessage extends MessageBase {
-  channel: 'progress';
   source: string;
   progress?: number;
   message?: string;
 }
 
-export interface PluginLifeCycleProgress extends ProgressMessage {
-  state: 'init' | 'create' | 'active' | 'error' | 'close';
+export interface PluginProgress extends ProgressMessage {
+  channel: 'PluginProgress';
+  state: PluginState;
 }
 
 export interface ProgressHandler<T extends ProgressMessage> {

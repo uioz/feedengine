@@ -180,14 +180,14 @@ export class MessageManager implements Closeable {
     };
   }
 
-  progress<T extends ProgressMessage>(source: string): ProgressHandler<T> {
+  progress<T extends ProgressMessage>(channel: T['channel'], source: string): ProgressHandler<T> {
     let open = true;
 
     const handler: ProgressHandler<T> = {
       send: (data) => {
         if (open) {
           this.push({
-            channel: 'progress',
+            channel,
             source,
             ...data,
           });

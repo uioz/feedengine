@@ -6,7 +6,7 @@ import {
   PluginContext,
   PluginOptions,
   PluginSpaceEvent,
-  PluginLifeCycleProgress,
+  PluginProgress,
   ProgressHandler,
   TaskConstructor,
   Initable,
@@ -45,7 +45,7 @@ export class PluginWrap implements PluginOptions, Initable {
   context!: PluginContext;
   eventListener = new Map<any, Set<any>>();
   fastifyPluginRegister?: FastifyPluginCallback<any>;
-  lifecycleProgress: ProgressHandler<PluginLifeCycleProgress>;
+  progress: ProgressHandler<PluginProgress>;
   pageRef: Page | null = null;
 
   constructor(
@@ -70,7 +70,7 @@ export class PluginWrap implements PluginOptions, Initable {
       }
     });
 
-    this.lifecycleProgress = this.deps.messageManager.progress(name);
+    this.progress = this.deps.messageManager.progress<PluginProgress>('PluginProgress', name);
   }
 
   public get state(): PluginState {
@@ -118,7 +118,7 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async init() {
-    this.lifecycleProgress.send({
+    this.progress.send({
       state: 'init',
     });
 
@@ -247,8 +247,8 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async onCreate() {
-    this.lifecycleProgress.send({
-      state: 'create',
+    this.progress.send({
+      state: 'created',
     });
 
     const hook = this.hook;
@@ -312,8 +312,8 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   onActive() {
-    this.lifecycleProgress.send({
-      state: 'active',
+    this.progress.send({
+      state: 'actived',
     });
 
     try {
@@ -332,9 +332,9 @@ export class PluginWrap implements PluginOptions, Initable {
     }
 
     try {
-      this.lifecycleProgress
+      this.progress
         .send({
-          state: 'close',
+          state: 'disposed',
         })
         .end();
 
@@ -370,7 +370,7 @@ export class PluginWrap implements PluginOptions, Initable {
 
     this.state = PluginState.error;
 
-    this.lifecycleProgress
+    this.progress
       .send({
         state: 'error',
       })
