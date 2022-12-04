@@ -106,19 +106,40 @@ export class TaskWrap {
       ioQueue: (timeout?: number) => (job) => {
         checkIsStillRunning();
 
-        return this.ioQueue.push(async () => {
-          checkIsStillRunning();
-          if (timeout) {
-            // TODO: 记录执行时间戳, 而不是任何任务都间隔固定时间
-            await new Promise((resolve) => setTimeout(resolve, timeout));
+        if (timeout === undefined) {
+          return this.ioQueue.push(async () => {
+            checkIsStillRunning();
+            const result = await job();
+            checkIsStillRunning();
+            return result;
+          });
+        } else {
+          let timestamp = 0;
 
+          return this.ioQueue.push(async () => {
+            checkIsStillRunning();
+            const now = Date.now();
+
+            if (timestamp === 0) {
+              timestamp = now;
+              await new Promise((resolve) => setTimeout(resolve, timeout));
+            } else if (now - timestamp < timeout) {
+              await new Promise((resolve) => setTimeout(resolve, timeout - (now - timestamp)));
+            }
             checkIsStillRunning();
 
-            return await job();
-          } else {
-            return await job();
-          }
-        });
+            try {
+              const result = await job();
+              checkIsStillRunning();
+              return result;
+              // eslint-disable-next-line no-useless-catch
+            } catch (error) {
+              throw error;
+            } finally {
+              timestamp = Date.now();
+            }
+          });
+        }
       },
       requestPage: async () => {
         checkIsStillRunning();
