@@ -104,15 +104,19 @@ export class TaskWrap {
       }
     };
 
-    const no = (type: NotificationType) =>
-      this.deps.messageManager.notification(
+    const no = (type: NotificationType) => {
+      checkIsStillRunning();
+      return this.deps.messageManager.notification(
         `${this.taskMeta.pluginName}@${this.taskMeta.taskName}`
       )[type];
+    };
 
-    const co = (type: NotificationType) =>
-      this.deps.messageManager.confirm(`${this.taskMeta.pluginName}@${this.taskMeta.taskName}`)[
-        type
-      ];
+    const co = (type: NotificationType) => {
+      checkIsStillRunning();
+      return this.deps.messageManager.confirm(
+        `${this.taskMeta.pluginName}@${this.taskMeta.taskName}`
+      )[type];
+    };
 
     this.task = this.taskMeta.taskConstructor.setup!({
       taskName: this.taskMeta.taskName,
@@ -191,6 +195,8 @@ export class TaskWrap {
       },
       store: this.deps.pluginManager.store,
       inject: <T>(key: InjectionKey<T>) => {
+        checkIsStillRunning();
+
         return this.deps.pluginManager.loadedPlugins
           .find(({name}) => name === this.taskMeta.pluginName)!
           .provideStore.get(key);
