@@ -184,7 +184,7 @@ export class PluginWrap implements PluginOptions, Initable {
       getSettings: () => this.deps.settingManager.getPluginSettings(this.name),
       setSettings: (settings: unknown) =>
         this.deps.settingManager.setPluginSettings(this.name, settings),
-      getSequelize: () => this.deps.storageManager.sequelize,
+      sequelize: this.deps.storageManager.sequelize,
       registerTask: (taskName: string, taskConstructor: TaskConstructor) => {
         if (this.state !== PluginState.ready) {
           throw new Error('the register only works before any hooks execution');
@@ -192,18 +192,30 @@ export class PluginWrap implements PluginOptions, Initable {
 
         this.deps.taskManager.register(this.name, taskName, taskConstructor);
       },
-      requestPage: async () => {
-        if (this.state !== PluginState.init) {
-          throw new Error('');
-        }
+      page: {
+        request: async () => {
+          if (
+            this.state !== PluginState.init &&
+            this.state !== PluginState.created &&
+            this.state !== PluginState.actived
+          ) {
+            throw new Error('');
+          }
 
-        if (this.pageRef) {
-          throw new Error('');
-        }
+          if (this.pageRef) {
+            return this.pageRef;
+          }
 
-        this.pageRef = await this.deps.driverManager.requestPage(true);
+          this.pageRef = await this.deps.driverManager.requestPage(true);
 
-        return this.pageRef;
+          return this.pageRef;
+        },
+        release: () => {
+          if (this.pageRef) {
+            this.deps.driverManager.releasePage(this.pageRef, true);
+          }
+          this.pageRef = null;
+        },
       },
       store: this.store,
     } as any;
@@ -252,9 +264,14 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async onCreate() {
-    const hook = this.hook;
+    if (this.plugin.onCreate === undefined) {
+      this.state === PluginState.actived;
+      return;
+    }
 
     try {
+      const hook = this.hook;
+
       await this.plugin.onCreate?.({
         waitPlugins: (pluginNames) =>
           new Promise((resolve, reject) => {
@@ -301,10 +318,7 @@ export class PluginWrap implements PluginOptions, Initable {
 
       this.state = PluginState.created;
 
-      if (this.pageRef) {
-        this.deps.driverManager.releasePage(this.pageRef, true);
-        this.pageRef = null;
-      }
+      this.context.page.release();
     } catch (error) {
       this.errorHandler(error);
     }
@@ -337,10 +351,7 @@ export class PluginWrap implements PluginOptions, Initable {
 
       this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
-      if (this.pageRef) {
-        this.deps.driverManager.releasePage(this.pageRef, true);
-        this.pageRef = null;
-      }
+      this.context.page.release();
 
       await this.plugin.onDispose?.();
     } catch (error) {

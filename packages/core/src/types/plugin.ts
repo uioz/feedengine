@@ -52,9 +52,12 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
   registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
   getSettings<T>(): Promise<PluginSettings<T> | null>;
   setSettings(setting: unknown): Promise<void>;
-  getSequelize(): Sequelize;
+  sequelize: Sequelize;
   registerTask(taskName: string, task: TaskConstructor): void;
-  requestPage(): Page;
+  page: {
+    request(): Promise<Page>;
+    release(): Promise<void>;
+  };
   store: PluginContextStore;
 }
 

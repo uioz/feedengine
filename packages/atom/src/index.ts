@@ -40,7 +40,7 @@ export const plugin = definePlugin<true>((context, deps) => {
       updatedAt: DataTypes.DATE,
     },
     {
-      sequelize: context.getSequelize(),
+      sequelize: context.sequelize,
     }
   );
 
@@ -65,7 +65,7 @@ export const plugin = definePlugin<true>((context, deps) => {
       await atomModel.sync();
     },
     async onDispose() {
-      context.getSequelize().modelManager.removeModel(atomModel);
+      context.sequelize.modelManager.removeModel(atomModel);
     },
   };
 });

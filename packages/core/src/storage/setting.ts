@@ -20,6 +20,9 @@ export const defaultAppSettings: AppSettings = {
     taskConcurrency: 1,
     plugins: [],
   },
+  proxy: {
+    httpProxy: '',
+  },
 };
 
 export const defaultPluginConfig: PluginPerformanceSettings = {

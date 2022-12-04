@@ -151,16 +151,13 @@ export class TaskWrap {
             return result;
           });
         } else {
-          let timestamp = 0;
+          let timestamp = Date.now();
 
           return this.ioQueue.push(async () => {
             checkIsStillRunning();
             const now = Date.now();
 
-            if (timestamp === 0) {
-              timestamp = now;
-              await new Promise((resolve) => setTimeout(resolve, timeout));
-            } else if (now - timestamp < timeout) {
+            if (now - timestamp < timeout) {
               await new Promise((resolve) => setTimeout(resolve, timeout - (now - timestamp)));
             }
             checkIsStillRunning();

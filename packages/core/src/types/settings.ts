@@ -19,6 +19,9 @@ export interface AppSettings {
     taskConcurrency: number; // 1 by default
     plugins: Array<PluginPerformanceSettings & {name: string}>;
   };
+  proxy: {
+    httpProxy: string;
+  };
 }
 
 export interface PluginSettings<T = any> {
