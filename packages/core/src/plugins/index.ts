@@ -17,7 +17,6 @@ import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
 import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
-import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 import {NotificationType} from '../message/index.js';
 import type {Page} from 'puppeteer-core';
 
@@ -178,12 +177,6 @@ export class PluginWrap implements PluginOptions, Initable {
       getSettings: () => this.deps.settingManager.getPluginSettings(this.name),
       setSettings: (settings: unknown) =>
         this.deps.settingManager.setPluginSettings(this.name, settings),
-      getMainModel: <M extends Model, TAttributes = Attributes<M>>(
-        attributes: ModelAttributes<M, TAttributes>,
-        options?: ModelOptions<M>
-      ) => {
-        return this.deps.storageManager.sequelize.define(this.name, attributes, options);
-      },
       getSequelize: () => this.deps.storageManager.sequelize,
       registerTask: (taskName: string, taskConstructor: TaskConstructor) => {
         if (this.state !== PluginState.ready) {

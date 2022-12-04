@@ -14,10 +14,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "feedengine-plugin": "workspace:^0.1.0",
-    "sequelize": "^6.26.0"
+    "feedengine-plugin": "workspace:^0.1.0"
   },
   "devDependencies": {
-    "feedengine": "workspace:^0.1.0"
+    "feedengine": "workspace:^0.1.0",
+    "sequelize": "^6.26.0"
   }
 }

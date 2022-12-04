@@ -6,6 +6,7 @@ export * from './settings.js';
 export * from './event.js';
 export * from './api.js';
 export * from './schedule.js';
+export * from './model.js';
 
 export interface Initable {
   init(): Promise<void>;

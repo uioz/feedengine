@@ -11,7 +11,6 @@ import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
-import type {Model, Attributes, ModelAttributes, ModelOptions} from 'sequelize';
 import {Page} from 'puppeteer-core';
 import {PluginState} from '../plugins/index.js';
 
@@ -40,6 +39,7 @@ export class TaskWrap {
   task!: Task;
   log!: TopDeps['log'];
   taskId!: number;
+  pluginId!: number;
   successCallback: ((taskId: number) => void) | null = null;
   pageRef: Page | null = null;
 
@@ -56,6 +56,7 @@ export class TaskWrap {
   }
 
   init(
+    pluginId: number,
     taskId: number,
     taskMeta: TaskMeta,
     settings: unknown,
@@ -63,6 +64,7 @@ export class TaskWrap {
     taskQueue: queueAsPromised<() => Promise<void>>,
     successCallback: (taskId: number) => void
   ) {
+    this.pluginId = pluginId;
     this.taskId = taskId;
     this.taskMeta = taskMeta;
     this.settings = settings;
@@ -93,19 +95,10 @@ export class TaskWrap {
     this.task = this.taskMeta.taskConstructor.setup!({
       taskName: this.taskMeta.taskName,
       pluginName: this.taskMeta.pluginName,
-      id: this.taskId,
+      taskId: this.taskId,
+      pluginId: this.pluginId,
       log: this.log,
       settings: this.settings,
-      getMainModel: <M extends Model, TAttributes = Attributes<M>>(
-        attributes: ModelAttributes<M, TAttributes>,
-        options?: ModelOptions<M>
-      ) => {
-        return this.deps.storageManager.sequelize.define(
-          this.taskMeta.pluginName,
-          attributes,
-          options
-        );
-      },
       getSequelize: () => this.deps.storageManager.sequelize,
       exit: () => {
         throw new ExitError();
@@ -419,7 +412,7 @@ export class TaskManager implements Closeable, Initable {
           id: taskId,
         },
       })
-      .then((data) => {
+      .then(async (data) => {
         const {plugin: pluginName, task: taskName, settings} = data!;
 
         const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`)!;
@@ -445,6 +438,11 @@ export class TaskManager implements Closeable, Initable {
         }
 
         task.init(
+          (await this.deps.storageManager.pluginModel.findOne({
+            where: {
+              name: pluginName,
+            },
+          }))!.id,
           taskId,
           taskMeta,
           settings,

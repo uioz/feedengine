@@ -1,11 +1,14 @@
 // refer to http://www.intertwingly.net/wiki/pie/Rss20AndAtom10Compared#x
 // http://www.atomenabled.org/developers/syndication
 // https://datatracker.ietf.org/doc/html/rfc4287
-import type {Model, InferAttributes, InferCreationAttributes, ModelStatic} from 'sequelize';
+import type {ModelStatic} from 'sequelize';
+import type {Atom} from '../model.js';
+
+export type AtomModel = Atom;
 
 declare module 'feedengine' {
   interface PluginContextStore {
-    atomModel: ModelStatic<AtomPluginMainTableModel>;
+    atomModel: ModelStatic<AtomModel>;
   }
 }
 
@@ -48,28 +51,3 @@ export interface AtomContent {
   src?: string;
   content: string;
 }
-
-export interface AtomPluginMainTable {
-  read: boolean;
-  plugin: string;
-  task: string;
-  uuid: string;
-  //
-  id: string;
-  author: Array<AtomAuthor>;
-  category: Array<AtomCategory>;
-  contributor: Array<AtomContributor>;
-  summary: string;
-  lang: string;
-  content: AtomContent;
-  updated: Date;
-  link: Array<AtomLink>;
-  title: string;
-}
-
-export interface AtomPluginMainTableModel
-  extends AtomPluginMainTable,
-    Model<
-      InferAttributes<AtomPluginMainTableModel>,
-      InferCreationAttributes<AtomPluginMainTableModel>
-    > {}

@@ -9,8 +9,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc --build",
     "dev": "tsc -w",
-    "start:dev": "cross-env NODE_ENV=development node ./dist/daemon.js | pino-pretty",
-    "start": "cross-env NODE_ENV=production node ./dist/daemon.js"
+    "start:dev": "cross-env NODE_ENV=development node --experimental-import-meta-resolve --loader ./loader.mjs ./dist/daemon.js | pino-pretty",
+    "start": "cross-env NODE_ENV=production node --experimental-import-meta-resolve --loader ./loader.mjs ./dist/daemon.js"
   },
   "keywords": [],
   "author": "",

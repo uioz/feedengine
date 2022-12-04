@@ -37,7 +37,7 @@ export class PluginSettings extends Model<
   };
 }
 
-class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>> {
+export class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>> {
   declare id: CreationOptional<number>;
   declare plugin: string;
   declare task: string;
@@ -51,7 +51,10 @@ class Tasks extends Model<InferAttributes<Tasks>, InferCreationAttributes<Tasks>
   declare taskCount: NonAttribute<number>;
 }
 
-class Schedules extends Model<InferAttributes<Schedules>, InferCreationAttributes<Schedules>> {
+export class Schedules extends Model<
+  InferAttributes<Schedules>,
+  InferCreationAttributes<Schedules>
+> {
   declare id: CreationOptional<number>;
   declare TaskId: ForeignKey<Tasks['id']>;
   declare type: number;
@@ -137,7 +140,6 @@ export class StorageManager implements Initable, Closeable {
       foreignKey: {
         allowNull: false,
       },
-      // TODO: 测试删除 Task id = 1 的记录, 看看是否会清空 Schedule
       onDelete: 'CASCADE',
     });
 
@@ -203,7 +205,6 @@ export class StorageManager implements Initable, Closeable {
       foreignKey: {
         allowNull: false,
       },
-      // TODO: 测试删除 Task id = 1 的记录, 看看是否会清空 Schedule
       onDelete: 'CASCADE',
     });
     this.schedulesModel.belongsTo(this.tasksModel);

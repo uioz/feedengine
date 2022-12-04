@@ -74,9 +74,9 @@ importers:
       sequelize: ^6.26.0
     dependencies:
       feedengine-plugin: link:../plugin
-      sequelize: 6.26.0
     devDependencies:
       feedengine: link:../core
+      sequelize: 6.26.0
 
   packages/core:
     specifiers:
@@ -599,7 +599,6 @@ packages:
 
   /@types/validator/13.7.10:
     resolution: {integrity: sha512-t1yxFAR2n0+VO6hd/FJ9F2uezAZVWHLmpmlJzm1eX03+H7+HsuTAp7L8QJs+2pQCfWkP1+EXsGK9Z9v7o/qPVQ==}
-    dev: false
 
   /@types/web-bluetooth/0.0.16:
     resolution: {integrity: sha512-oh8q2Zc32S6gd/j50GowEjKLoOVOwHP/bWVjKJInBwQqdOYMdPrf1oVlelTlyfFK3CKxL1uahMDAr+vy8T7yMQ==}
@@ -1639,7 +1638,6 @@ packages:
 
   /dottie/2.0.2:
     resolution: {integrity: sha512-fmrwR04lsniq/uSr8yikThDTrM7epXHBAAjH9TbeH3rEA8tdCO7mRzB9hdmdGyJCxF8KERo9CITcm3kGuoyMhg==}
-    dev: false
 
   /eastasianwidth/0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
@@ -2704,7 +2702,6 @@ packages:
   /inflection/1.13.4:
     resolution: {integrity: sha512-6I/HUDeYFfuNCVS3td055BaXBwKYuzw7K3ExVMStBowKo9oOAMJIXIHvdyR3iboTCp1b+1i5DSkIZTcwIktuDw==}
     engines: {'0': node >= 0.4.0}
-    dev: false
 
   /inflight/1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
@@ -3403,11 +3400,9 @@ packages:
     resolution: {integrity: sha512-hoB6suq4ISDj7BDgctiOy6zljBsdYT0++0ZzZm9rtxIvJhIbQ3nmbgSWe7dNFGurl6/7b1OUkHlmN9JWgXVz7w==}
     dependencies:
       moment: 2.29.4
-    dev: false
 
   /moment/2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
-    dev: false
 
   /ms/2.0.0:
     resolution: {integrity: sha512-Tpp60P6IUJDTuOq/5Z8cdskzJujfwqfOTkrwIwj7IRISpnkJnT6SyJ4PCPnGMoFjC9ddhal5KVIYtAt97ix05A==}
@@ -3762,7 +3757,6 @@ packages:
 
   /pg-connection-string/2.5.0:
     resolution: {integrity: sha512-r5o/V/ORTA6TmUnyWZR9nCj1klXCO2CEKNRlVuJptZe85QuhFayC7WeMic7ndayT5IRIR0S0xFxFi2ousartlQ==}
-    dev: false
 
   /picocolors/1.0.0:
     resolution: {integrity: sha512-1fygroTLlHu66zi26VoTDv8yRgm0Fccecssto+MhsZ0D/DGW2sm8E8AjW7NU5VVTRt5GxbeZ5qBuJr+HyLYkjQ==}
@@ -4187,7 +4181,6 @@ packages:
 
   /retry-as-promised/6.1.0:
     resolution: {integrity: sha512-Hj/jY+wFC+SB9SDlIIFWiGOHnNG0swYbGYsOj2BJ8u2HKUaobNKab0OIC0zOLYzDy0mb7A4xA5BMo4LMz5YtEA==}
-    dev: false
 
   /retry/0.12.0:
     resolution: {integrity: sha512-9LkiTwjUh6rT555DtE9rTX+BKByPfrMzEAtnlEtdEwr3Nkffwiihqe2bWADg+OQRjt9gl6ICdmB/ZFDCGAtSow==}
@@ -4297,7 +4290,6 @@ packages:
   /sequelize-pool/7.1.0:
     resolution: {integrity: sha512-G9c0qlIWQSK29pR/5U2JF5dDQeqqHRragoyahj/Nx4KOOQ3CPPfzxnfqFPCSB7x5UgjOgnZ61nSxz+fjDpRlJg==}
     engines: {node: '>= 10.0.0'}
-    dev: false
 
   /sequelize/6.26.0:
     resolution: {integrity: sha512-Xv82z1FdSn/qwB1IObSxIHV519cFk/vSD28vWs8Y0VucQLn7pK2x2jYjf2Qg/rBUQbCVprDdU7RPf+55rrkc0A==}
@@ -4350,7 +4342,7 @@ packages:
       wkx: 0.5.0
     transitivePeerDependencies:
       - supports-color
-    dev: false
+    dev: true
 
   /sequelize/6.26.0_sqlite3@5.1.2:
     resolution: {integrity: sha512-Xv82z1FdSn/qwB1IObSxIHV519cFk/vSD28vWs8Y0VucQLn7pK2x2jYjf2Qg/rBUQbCVprDdU7RPf+55rrkc0A==}
@@ -4755,7 +4747,6 @@ packages:
 
   /toposort-class/1.0.1:
     resolution: {integrity: sha512-OsLcGGbYF3rMjPUf8oKktyvCiUxSbqMMS39m33MAjLTC1DVIH6x3WSt63/M77ihI09+Sdfk1AXvfhCEeUmC7mg==}
-    dev: false
 
   /tr46/0.0.3:
     resolution: {integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==}
@@ -4893,7 +4884,6 @@ packages:
   /uuid/8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
-    dev: false
 
   /v8-compile-cache-lib/3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
@@ -4909,7 +4899,6 @@ packages:
   /validator/13.7.0:
     resolution: {integrity: sha512-nYXQLCBkpJ8X6ltALua9dRrZDHVYxjJ1wgskNt1lH9fzGjs3tgojGSCBjmEPwkWS1y29+DrizMTW19Pr9uB2nw==}
     engines: {node: '>= 0.10'}
-    dev: false
 
   /vite-plugin-pages/0.27.1_vite@3.2.4:
     resolution: {integrity: sha512-KXfeG9aQSNsSXBs1mPeeuC0rwkLti+MgoJ3GknrwRDNrdrojb9czcFAVlnoPNVdfuvTHcWdf5zqN7+vuvz2JZQ==}
@@ -5149,7 +5138,6 @@ packages:
     resolution: {integrity: sha512-Xng/d4Ichh8uN4l0FToV/258EjMGU9MGcA0HV2d9B/ZpZB3lqQm7nkOdZdm5GhKtLLhAE7PiVQwN4eN+2YJJUg==}
     dependencies:
       '@types/node': 18.11.10
-    dev: false
 
   /word-wrap/1.2.3:
     resolution: {integrity: sha512-Hz/mrNwitNRh/HUAtM/VT/5VH+ygD6DV7mYKZAtHOrbs8U7lvPS6xf7EJKMF0uW1KJCl0H701g3ZGus+muE5vQ==}
