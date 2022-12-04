@@ -12,6 +12,8 @@ import {log, type Log} from './utils/log.js';
 import {TaskManager} from './task/index.js';
 import {ScheduleManager} from './schedule/index.js';
 import {env} from 'node:process';
+import {gotScraping, type Got} from 'got-scraping';
+import toughCookie from 'tough-cookie';
 
 const feedengine = await findRootDir();
 
@@ -32,6 +34,8 @@ export interface TopDeps {
   };
   log: Log;
   prod: boolean;
+  gotScraping: Promise<Got>;
+  toughCookie: typeof toughCookie;
 }
 
 const contaienr = createContainer<TopDeps>();
@@ -49,6 +53,12 @@ contaienr.register({
   log: asFunction(log).singleton(),
   feedengine: asValue(feedengine),
   prod: asValue(env.NODE_ENV === 'production'),
+  gotScraping: asFunction(async ({appManager}: TopDeps) => {
+    return gotScraping.extend({
+      proxyUrl: (await appManager.getProxy()).httpProxy,
+    } as any);
+  }),
+  toughCookie: asValue(toughCookie),
 });
 
 contaienr.resolve('appManager').init();

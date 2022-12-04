@@ -13,6 +13,7 @@ import {
   Closeable,
   PluginContextStore,
   ProgressMessage,
+  InjectionKey,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -49,6 +50,7 @@ export class PluginWrap implements PluginOptions, Initable {
   progress: ProgressHandler<PluginProgress>;
   pageRef: Page | null = null;
   log: TopDeps['log'];
+  provideStore = new Map<InjectionKey<any>, any>();
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -218,6 +220,16 @@ export class PluginWrap implements PluginOptions, Initable {
         },
       },
       store: this.store,
+      tool: {
+        gotScraping: await this.deps.gotScraping,
+        toughCookie: this.deps.toughCookie,
+        provide: (key: symbol, value: unknown) => {
+          if (this.state === PluginState.error || this.state === PluginState.disposed) {
+            throw new Error('');
+          }
+          this.provideStore.set(key, value);
+        },
+      },
     } as any;
 
     try {
@@ -352,6 +364,8 @@ export class PluginWrap implements PluginOptions, Initable {
       this.deps.taskManager.unRegisterTaskByPlugin(this.name);
 
       this.context.page.release();
+
+      this.provideStore.clear();
 
       await this.plugin.onDispose?.();
     } catch (error) {

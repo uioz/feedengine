@@ -8,6 +8,7 @@ import type {
   TasksRes,
   ProgressHandler,
   TaskProgress,
+  InjectionKey,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
@@ -189,6 +190,11 @@ export class TaskWrap {
         return this.pageRef;
       },
       store: this.deps.pluginManager.store,
+      inject: <T>(key: InjectionKey<T>) => {
+        return this.deps.pluginManager.loadedPlugins
+          .find(({name}) => name === this.taskMeta.pluginName)!
+          .provideStore.get(key);
+      },
     });
 
     try {

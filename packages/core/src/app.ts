@@ -80,6 +80,18 @@ export class AppManager implements Initable, Closeable {
     throw new Error('app settings was missing');
   }
 
+  async getProxy() {
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
+      this.deps.feedengine.name
+    );
+
+    if (result) {
+      return result.settings.proxy;
+    }
+
+    throw new Error('app settings was missing');
+  }
+
   async restart() {
     await this.close();
 

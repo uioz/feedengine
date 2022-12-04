@@ -7,6 +7,7 @@ import type {TopDeps} from '../index.js';
 import type {Sequelize} from 'sequelize';
 import {PluginState as PS} from '../plugins/index.js';
 import type {Page} from 'puppeteer-core';
+import type {Got} from 'got-scraping';
 
 export interface PluginApp {
   baseUrl?: string; // 默认 /<pluginName>
@@ -28,6 +29,10 @@ export interface PluginOptions {
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface PluginContextStore {}
+
+// stolen from https://github.com/vuejs/core/blob/fe77e2bddaa5930ad37a43fe8e6254ddb0f9c2d7/packages/runtime-core/src/apiInject.ts#L6
+// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unused-vars
+export interface InjectionKey<T> extends Symbol {}
 
 export interface PluginContext extends Emitter<PluginSpaceEvent> {
   rootDir: string;
@@ -59,6 +64,11 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
     release(): Promise<void>;
   };
   store: PluginContextStore;
+  tool: {
+    gotScraping: Got;
+    toughCookie: TopDeps['toughCookie'];
+    provide<T>(key: InjectionKey<T>, value: T): void;
+  };
 }
 
 export type PluginOptionsConstructor<CorePlugin = boolean> = (

@@ -1,6 +1,6 @@
 import type {Logger} from 'pino';
 import type {Sequelize} from 'sequelize';
-import type {PluginContextStore, ConfimAction, TaskProgress} from './index.js';
+import type {PluginContextStore, ConfimAction, TaskProgress, InjectionKey} from './index.js';
 import type {Page} from 'puppeteer-core';
 import {TaskState as TS} from '../task/index.js';
 
@@ -36,6 +36,7 @@ export interface TaskContext<T> {
   };
   store: PluginContextStore;
   ioQueue: (interval?: number) => <T>(job: () => Promise<T>) => Promise<T>;
+  inject<T>(key: InjectionKey<T>): T;
 }
 
 export interface TaskConstructor {
