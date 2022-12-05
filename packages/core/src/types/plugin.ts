@@ -59,7 +59,7 @@ export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'o
     task(taskName: string, task: TaskConstructor): void;
   };
   settings: {
-    get<T>(): Promise<T | null>;
+    get<T>(): Promise<{settings: T; version: string} | null>;
     set(setting: unknown): Promise<void>;
   };
   sequelize: Sequelize;

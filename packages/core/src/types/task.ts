@@ -38,7 +38,13 @@ export interface TaskContext<T> {
     progress(options: Pick<TaskProgress, 'message' | 'progress'>): void;
   };
   store: PluginContextStore;
-  ioQueue: (interval?: number) => <T>(job: () => Promise<T>) => Promise<T>;
+  ioQueue<T>(
+    job: T
+  ): T extends () => Promise<unknown>
+    ? ReturnType<T>
+    : T extends number
+    ? <K>(job: () => Promise<K>) => Promise<K>
+    : never;
   inject<T>(key: InjectionKey<T>): T;
 }
 
@@ -48,7 +54,7 @@ export interface TaskConstructor {
    */
   description?: string;
   link?: string;
-  setup?<T>(context: TaskContext<T>): Task;
+  setup?(context: TaskContext<any>): Task;
 }
 
 export interface TaskTableDefinition {

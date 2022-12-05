@@ -20,7 +20,7 @@ export interface AppSettings {
     plugins: Array<PluginPerformanceSettings & {name: string}>;
   };
   proxy: {
-    httpProxy: string;
+    proxyUrl: string;
   };
 }
 

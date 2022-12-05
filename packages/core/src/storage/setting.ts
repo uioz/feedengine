@@ -21,7 +21,7 @@ export const defaultAppSettings: AppSettings = {
     plugins: [],
   },
   proxy: {
-    httpProxy: '',
+    proxyUrl: '',
   },
 };
 
@@ -87,9 +87,9 @@ export class SettingManager {
   }
 
   async checkGlobalSettings() {
-    const settings = await this.getPluginSettings<AppSettings>(this.feedengine.name);
+    const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
 
-    if (settings === null) {
+    if (result === null) {
       this.appManager.firstBooting = true;
 
       const settings = {
@@ -102,14 +102,14 @@ export class SettingManager {
       }));
 
       await this.setPluginSettings(this.feedengine.name, settings);
-    } else if (diffPluginsSetting(settings.performance, this.pluginManager.loadedPlugins)) {
+    } else if (diffPluginsSetting(result.settings.performance, this.pluginManager.loadedPlugins)) {
       this.log.info(`settings.performence was pruned`);
 
-      await this.setPluginSettings(this.feedengine.name, settings);
+      await this.setPluginSettings(this.feedengine.name, result);
     }
   }
 
-  async getPluginSettings<T>(name: string): Promise<T | null> {
+  async getPluginSettings<T>(name: string): Promise<{settings: T; version: string} | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
     }
@@ -128,9 +128,13 @@ export class SettingManager {
       return result;
     }
 
-    this.pluginSettingCache.set(result.Plugin.name, result.settings);
+    const settings = {
+      version: result.Plugin.version,
+      settings: result.dataValues.settings,
+    };
+    this.pluginSettingCache.set(result.Plugin.name, settings);
 
-    return result.settings;
+    return settings;
   }
 
   async setPluginSettings(pluginName: string, settings: unknown) {
@@ -150,9 +154,8 @@ export class SettingManager {
     });
 
     this.pluginSettingCache.set(pluginName, {
-      name: pluginName,
       version: plugin.version,
-      settings: settings,
+      settings,
     });
   }
 }

@@ -45,48 +45,48 @@ export class AppManager implements Initable, Closeable {
   }
 
   async getServerConfig() {
-    const settings = await this.deps.settingManager.getPluginSettings<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
-    if (settings) {
-      return settings.server;
+    if (result) {
+      return result.settings.server;
     }
 
     throw new Error('app settings was missing');
   }
 
   async getDriverConfig() {
-    const settings = await this.deps.settingManager.getPluginSettings<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
-    if (settings) {
-      return settings.driver;
+    if (result) {
+      return result.settings.driver;
     }
 
     throw new Error('app settings was missing');
   }
 
   async getPerformance() {
-    const settings = await this.deps.settingManager.getPluginSettings<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
-    if (settings) {
-      return settings.performance;
+    if (result) {
+      return result.settings.performance;
     }
 
     throw new Error('app settings was missing');
   }
 
   async getProxy() {
-    const settings = await this.deps.settingManager.getPluginSettings<AppSettings>(
+    const result = await this.deps.settingManager.getPluginSettings<AppSettings>(
       this.deps.feedengine.name
     );
 
-    if (settings) {
-      return settings.proxy;
+    if (result) {
+      return result.settings.proxy;
     }
 
     throw new Error('app settings was missing');

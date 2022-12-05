@@ -57,7 +57,7 @@ contaienr.register({
   prod: asValue(env.NODE_ENV === 'production'),
   gotScraping: asFunction(async ({appManager}: TopDeps) => {
     return gotScraping.extend({
-      proxyUrl: (await appManager.getProxy()).httpProxy,
+      proxyUrl: (await appManager.getProxy()).proxyUrl,
     } as any);
   }),
   toughCookie: asValue(toughCookie),
