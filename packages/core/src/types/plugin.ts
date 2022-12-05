@@ -1,5 +1,5 @@
 import type {Logger} from 'pino';
-import {ConfimAction, PluginSettings, TaskConstructor, PluginProgress} from './index.js';
+import {ConfimAction, TaskConstructor, PluginProgress} from './index.js';
 import {Emitter} from 'mitt';
 import {PluginSpaceEvent} from './event.js';
 import type {FastifyPluginCallback} from 'fastify';
@@ -34,7 +34,7 @@ export interface PluginContextStore {}
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unused-vars
 export interface InjectionKey<T> extends Symbol {}
 
-export interface PluginContext extends Emitter<PluginSpaceEvent> {
+export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'off' | 'emit'> {
   rootDir: string;
   feedengineVersion: string;
   currentPluginVerison: string;
@@ -54,11 +54,15 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
     progress(options: Pick<PluginProgress, 'message' | 'progress'>): void;
   };
   exit(): void;
-  registerFastifyPlugin(callback: FastifyPluginCallback<any>): void;
-  getSettings<T>(): Promise<PluginSettings<T> | null>;
-  setSettings(setting: unknown): Promise<void>;
+  register: {
+    fastifyPlugin(callback: FastifyPluginCallback<any>): void;
+    task(taskName: string, task: TaskConstructor): void;
+  };
+  settings: {
+    get<T>(): Promise<T | null>;
+    set(setting: unknown): Promise<void>;
+  };
   sequelize: Sequelize;
-  registerTask(taskName: string, task: TaskConstructor): void;
   page: {
     request(): Promise<Page>;
     release(): Promise<void>;
@@ -67,8 +71,8 @@ export interface PluginContext extends Emitter<PluginSpaceEvent> {
   tool: {
     gotScraping: Got;
     toughCookie: TopDeps['toughCookie'];
-    provide<T>(key: InjectionKey<T>, value: T): void;
   };
+  provide<T>(key: InjectionKey<T>, value: T): void;
 }
 
 export type PluginOptionsConstructor<CorePlugin = boolean> = (

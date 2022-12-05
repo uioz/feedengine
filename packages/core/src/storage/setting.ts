@@ -1,5 +1,5 @@
 import type {TopDeps} from '../index.js';
-import type {PluginSettings, AppSettings, PluginPerformanceSettings} from '../types/index.js';
+import type {AppSettings, PluginPerformanceSettings} from '../types/index.js';
 
 type PluginSettingModel = TopDeps['storageManager']['settingsModel'];
 type PluginModel = TopDeps['storageManager']['pluginModel'];
@@ -87,31 +87,29 @@ export class SettingManager {
   }
 
   async checkGlobalSettings() {
-    const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
+    const settings = await this.getPluginSettings<AppSettings>(this.feedengine.name);
 
-    if (result === null) {
+    if (settings === null) {
       this.appManager.firstBooting = true;
 
       const settings = {
-        name: this.feedengine.name,
-        version: this.feedengine.version,
-        settings: defaultAppSettings,
+        ...defaultAppSettings,
       };
 
-      settings.settings.performance.plugins = this.pluginManager.loadedPlugins.map(({name}) => ({
+      settings.performance.plugins = this.pluginManager.loadedPlugins.map(({name}) => ({
         name,
         ...defaultPluginConfig,
       }));
 
-      await this.setPluginSettings(this.feedengine.name, settings.settings);
-    } else if (diffPluginsSetting(result.settings.performance, this.pluginManager.loadedPlugins)) {
+      await this.setPluginSettings(this.feedengine.name, settings);
+    } else if (diffPluginsSetting(settings.performance, this.pluginManager.loadedPlugins)) {
       this.log.info(`settings.performence was pruned`);
 
-      await this.setPluginSettings(this.feedengine.name, result.settings);
+      await this.setPluginSettings(this.feedengine.name, settings);
     }
   }
 
-  async getPluginSettings<T>(name: string): Promise<PluginSettings<T> | null> {
+  async getPluginSettings<T>(name: string): Promise<T | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
     }
@@ -130,15 +128,9 @@ export class SettingManager {
       return result;
     }
 
-    const temp = {
-      name: result.Plugin.name,
-      version: result.Plugin.version,
-      settings: result.settings,
-    };
+    this.pluginSettingCache.set(result.Plugin.name, result.settings);
 
-    this.pluginSettingCache.set(result.Plugin.name, temp);
-
-    return temp;
+    return result.settings;
   }
 
   async setPluginSettings(pluginName: string, settings: unknown) {

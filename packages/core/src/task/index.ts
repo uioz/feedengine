@@ -125,7 +125,7 @@ export class TaskWrap {
       pluginId: this.pluginId,
       log: this.log,
       settings: this.settings,
-      getSequelize: () => this.deps.storageManager.sequelize,
+      sequelize: this.deps.storageManager.sequelize,
       exit: () => {
         throw new ExitError();
       },
@@ -180,18 +180,26 @@ export class TaskWrap {
           });
         }
       },
-      requestPage: async () => {
-        checkIsStillRunning();
+      page: {
+        request: async () => {
+          checkIsStillRunning();
 
-        if (this.pageRef) {
-          throw new Error('');
-        }
+          if (this.pageRef) {
+            throw new Error('');
+          }
 
-        this.pageRef = await this.deps.driverManager.requestPage();
+          this.pageRef = await this.deps.driverManager.requestPage();
 
-        checkIsStillRunning();
+          checkIsStillRunning();
 
-        return this.pageRef;
+          return this.pageRef;
+        },
+        release: async () => {
+          if (this.pageRef) {
+            await this.deps.driverManager.releasePage(this.pageRef);
+          }
+          this.pageRef = null;
+        },
       },
       store: this.deps.pluginManager.store,
       inject: <T>(key: InjectionKey<T>) => {

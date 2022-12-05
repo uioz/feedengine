@@ -91,9 +91,9 @@ export class DriverManager implements Initable {
     });
   }
 
-  releasePage(page: PuppeteerCore.Page, force = false) {
+  async releasePage(page: PuppeteerCore.Page, force = false) {
     if (force) {
-      page.close();
+      await page.close();
     } else {
       this.freePagePool.push(page);
     }

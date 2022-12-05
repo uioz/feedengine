@@ -176,24 +176,28 @@ export class PluginWrap implements PluginOptions, Initable {
 
         this.eventBus.off(key, handler);
       },
-      registerFastifyPlugin: (callback: FastifyPluginCallback<any>) => {
-        if (this.state !== PluginState.ready) {
-          throw new Error('the register only works before any hooks execution');
-        }
+      emit: this.eventBus.emit,
+      register: {
+        fastifyPlugin: (callback: FastifyPluginCallback<any>) => {
+          if (this.state !== PluginState.ready) {
+            throw new Error('the register only works before any hooks execution');
+          }
 
-        this.fastifyPluginRegister = callback;
+          this.fastifyPluginRegister = callback;
+        },
+        task: (taskName: string, taskConstructor: TaskConstructor) => {
+          if (this.state !== PluginState.ready) {
+            throw new Error('the register only works before any hooks execution');
+          }
+
+          this.deps.taskManager.register(this.name, taskName, taskConstructor);
+        },
       },
-      getSettings: () => this.deps.settingManager.getPluginSettings(this.name),
-      setSettings: (settings: unknown) =>
-        this.deps.settingManager.setPluginSettings(this.name, settings),
+      settings: {
+        get: <T>() => this.deps.settingManager.getPluginSettings<T>(this.name),
+        set: (settings: unknown) => this.deps.settingManager.setPluginSettings(this.name, settings),
+      },
       sequelize: this.deps.storageManager.sequelize,
-      registerTask: (taskName: string, taskConstructor: TaskConstructor) => {
-        if (this.state !== PluginState.ready) {
-          throw new Error('the register only works before any hooks execution');
-        }
-
-        this.deps.taskManager.register(this.name, taskName, taskConstructor);
-      },
       page: {
         request: async () => {
           if (
@@ -212,9 +216,9 @@ export class PluginWrap implements PluginOptions, Initable {
 
           return this.pageRef;
         },
-        release: () => {
+        release: async () => {
           if (this.pageRef) {
-            this.deps.driverManager.releasePage(this.pageRef, true);
+            await this.deps.driverManager.releasePage(this.pageRef, true);
           }
           this.pageRef = null;
         },
@@ -223,14 +227,14 @@ export class PluginWrap implements PluginOptions, Initable {
       tool: {
         gotScraping: await this.deps.gotScraping,
         toughCookie: this.deps.toughCookie,
-        provide: (key: symbol, value: unknown) => {
-          if (this.state === PluginState.error || this.state === PluginState.disposed) {
-            throw new Error('');
-          }
-          this.provideStore.set(key, value);
-        },
       },
-    } as any;
+      provide: (key: symbol, value: unknown) => {
+        if (this.state === PluginState.error || this.state === PluginState.disposed) {
+          throw new Error('');
+        }
+        this.provideStore.set(key, value);
+      },
+    };
 
     try {
       const plugin = this.options(

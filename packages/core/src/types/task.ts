@@ -18,9 +18,12 @@ export interface TaskContext<T> {
   taskId: number;
   log: Logger;
   settings: T;
-  getSequelize(): Sequelize;
+  sequelize: Sequelize;
   exit: () => void;
-  requestPage: () => Promise<Page>;
+  page: {
+    request(): Promise<Page>;
+    release(): Promise<void>;
+  };
   window: {
     notification: {
       warn(message: string): void;
