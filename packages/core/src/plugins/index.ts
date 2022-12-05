@@ -227,6 +227,7 @@ export class PluginWrap implements PluginOptions, Initable {
       tool: {
         gotScraping: await this.deps.gotScraping,
         toughCookie: this.deps.toughCookie,
+        serializeForTough: this.deps.serializeForTough,
       },
       provide: (key: symbol, value: unknown) => {
         if (this.state === PluginState.error || this.state === PluginState.disposed) {
@@ -281,7 +282,7 @@ export class PluginWrap implements PluginOptions, Initable {
 
   async onCreate() {
     if (this.plugin.onCreate === undefined) {
-      this.state === PluginState.actived;
+      this.state = PluginState.created;
       return;
     }
 
@@ -431,6 +432,10 @@ class Hook extends EventEmitter {
           this.removeAllListeners();
         });
       }
+    });
+
+    this.on('error', () => {
+      // prevent exit as unhanlded error
     });
   }
 }

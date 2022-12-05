@@ -93,7 +93,12 @@ export class DriverManager implements Initable {
 
   async releasePage(page: PuppeteerCore.Page, force = false) {
     if (force) {
-      await page.close();
+      if (this.freePagePool.length !== 0) {
+        await page.close();
+      } else {
+        page.goto('about:blank');
+        this.freePagePool.push(page);
+      }
     } else {
       this.freePagePool.push(page);
     }

@@ -14,6 +14,7 @@ import {ScheduleManager} from './schedule/index.js';
 import {env} from 'node:process';
 import {gotScraping, type Got} from 'got-scraping';
 import toughCookie from 'tough-cookie';
+import {serializeForTough} from './utils/serializeForTough.js';
 
 const feedengine = await findRootDir();
 
@@ -36,6 +37,7 @@ export interface TopDeps {
   prod: boolean;
   gotScraping: Promise<Got>;
   toughCookie: typeof toughCookie;
+  serializeForTough: typeof serializeForTough;
 }
 
 const contaienr = createContainer<TopDeps>();
@@ -59,6 +61,7 @@ contaienr.register({
     } as any);
   }),
   toughCookie: asValue(toughCookie),
+  serializeForTough: asValue(serializeForTough),
 });
 
 contaienr.resolve('appManager').init();

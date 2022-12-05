@@ -51,7 +51,7 @@ export const plugin = definePlugin<true>((context, deps) => {
   atomModel.belongsTo(deps.storageManager.tasksModel);
   deps.storageManager.tasksModel.hasOne(atomModel);
 
-  context.registerFastifyPlugin(function (fastify, options, done) {
+  context.register.fastifyPlugin(function (fastify, options, done) {
     // will be /api/atom/xxxx
     fastify.get('/atom/:provider', async () => {
       return 'hello world';

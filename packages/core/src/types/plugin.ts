@@ -71,6 +71,7 @@ export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'o
   tool: {
     gotScraping: Got;
     toughCookie: TopDeps['toughCookie'];
+    serializeForTough: TopDeps['serializeForTough'];
   };
   provide<T>(key: InjectionKey<T>, value: T): void;
 }
