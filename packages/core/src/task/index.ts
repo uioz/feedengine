@@ -145,41 +145,36 @@ export class TaskWrap {
           this.progress.send(options);
         },
       },
-      ioQueue: (timeout?: number) => (job) => {
-        checkIsStillRunning();
-
-        if (timeout === undefined) {
-          return this.ioQueue.push(async () => {
-            checkIsStillRunning();
-            const result = await job();
-            checkIsStillRunning();
-            return result;
-          });
-        } else {
-          let timestamp = Date.now();
-
-          return this.ioQueue.push(async () => {
-            checkIsStillRunning();
-            const now = Date.now();
-
-            if (now - timestamp < timeout) {
-              await new Promise((resolve) => setTimeout(resolve, timeout - (now - timestamp)));
-            }
-            checkIsStillRunning();
-
-            try {
-              const result = await job();
-              checkIsStillRunning();
-              return result;
-              // eslint-disable-next-line no-useless-catch
-            } catch (error) {
-              throw error;
-            } finally {
-              timestamp = Date.now();
-            }
-          });
+      ioQueue: ((arg: any) => {
+        if (typeof arg === 'function') {
+          return this.ioQueue.push(arg);
         }
-      },
+
+        if (typeof arg !== 'number') {
+          throw new Error('');
+        }
+
+        let timestamp = Date.now();
+
+        const queue = fastq.promise(async (job) => {
+          const now = Date.now();
+
+          if (now - timestamp < arg) {
+            await new Promise((resolve) => setTimeout(resolve, arg - (now - timestamp)));
+          }
+
+          try {
+            return await this.ioQueue.push(job);
+            // eslint-disable-next-line no-useless-catch
+          } catch (error) {
+            throw error;
+          } finally {
+            timestamp = Date.now();
+          }
+        }, 1);
+
+        return queue.push;
+      }) as any,
       page: {
         request: async () => {
           checkIsStillRunning();
