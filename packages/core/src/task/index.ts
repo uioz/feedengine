@@ -89,12 +89,14 @@ export class TaskWrap {
       source: `${taskMeta.pluginName}@${taskMeta.taskName}@${taskId}`,
     });
 
-    taskQueue.push(async () => {
-      if (this.state === TaskState.pending) {
-        this.state = TaskState.running;
-        await this.run();
-      }
-    });
+    taskQueue
+      .push(() => {
+        if (this.state === TaskState.pending) {
+          this.state = TaskState.running;
+        }
+        return this.run();
+      })
+      .catch(this.errorHandler);
   }
 
   async run() {
@@ -147,7 +149,10 @@ export class TaskWrap {
       },
       ioQueue: ((arg: any) => {
         if (typeof arg === 'function') {
-          return this.ioQueue.push(arg);
+          return this.ioQueue.push(() => {
+            checkIsStillRunning();
+            return arg();
+          });
         }
 
         if (typeof arg !== 'number') {
@@ -164,7 +169,10 @@ export class TaskWrap {
           }
 
           try {
-            return await this.ioQueue.push(job);
+            return await this.ioQueue.push(() => {
+              checkIsStillRunning();
+              return job();
+            });
             // eslint-disable-next-line no-useless-catch
           } catch (error) {
             throw error;

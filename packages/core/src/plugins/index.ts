@@ -415,27 +415,30 @@ class Hook extends EventEmitter {
       (this.pluginStates.get(PluginState.error)!.size +
         this.pluginStates.get(PluginState.disposed)!.size);
 
-    this.on(PluginState[PluginState.created], () => {
+    const createdHandler = () => {
       const amnoutOfNormallyPlugin = getAmnoutOfNormallyPlugin();
 
       if (this.pluginStates.get(PluginState.created)!.size === amnoutOfNormallyPlugin) {
-        setImmediate(() => this.emit(`all-${PluginState[PluginState.created]}`));
+        this.emit(`all-${PluginState[PluginState.created]}`);
       }
-    });
+    };
 
-    this.on(PluginState[PluginState.actived], () => {
+    this.on(PluginState[PluginState.created], createdHandler);
+
+    const activeHandler = () => {
       const amnoutOfNormallyPlugin = getAmnoutOfNormallyPlugin();
 
       if (this.pluginStates.get(PluginState.actived)!.size === amnoutOfNormallyPlugin) {
-        setImmediate(() => {
-          this.emit(`all-${PluginState[PluginState.actived]}`);
-          this.removeAllListeners();
-        });
+        this.emit(`all-${PluginState[PluginState.actived]}`);
+        this.removeAllListeners();
       }
-    });
+    };
 
-    this.on('error', () => {
-      // prevent exit as unhanlded error
+    this.on(PluginState[PluginState.actived], activeHandler);
+
+    this.on(PluginState[PluginState.error], () => {
+      createdHandler();
+      activeHandler();
     });
   }
 }

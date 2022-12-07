@@ -7,18 +7,17 @@ import {
   Association,
   NonAttribute,
 } from 'sequelize';
-import type {PluginModel, TaskModel} from 'feedengine';
+import type {PluginModel} from 'feedengine';
 import {AtomAuthor, AtomCategory, AtomContributor, AtomContent, AtomLink} from './types/index.js';
 
 export class Atom extends Model<InferAttributes<Atom>, InferCreationAttributes<Atom>> {
   declare read: boolean;
   declare PluginId: ForeignKey<PluginModel['id']>;
-  declare TaskId: ForeignKey<TaskModel['id']>;
 
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare uuid: CreationOptional<string>;
+  declare uid: CreationOptional<string>;
 
   declare id: string;
   declare author: Array<AtomAuthor>;
@@ -31,11 +30,9 @@ export class Atom extends Model<InferAttributes<Atom>, InferCreationAttributes<A
   declare link: Array<AtomLink>;
   declare title: string;
 
-  declare Task: NonAttribute<TaskModel>;
   declare Plugin: NonAttribute<PluginModel>;
 
   declare static associations: {
     Plugin: Association<Atom, PluginModel>;
-    Task: Association<Atom, TaskModel>;
   };
 }

@@ -129,12 +129,12 @@ export class AppManager implements Initable, Closeable {
       await this.deps.driverManager.init();
     }
 
-    this.deps.pluginManager.create();
-
     this.deps.pluginManager.hook.once(`all-${PluginState[PluginState.actived]}`, () => {
       this.deps.taskManager.active();
       this.deps.scheduleManager.active();
     });
+
+    this.deps.pluginManager.create();
 
     await this.deps.serverManager.init();
   }

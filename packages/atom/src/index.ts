@@ -9,12 +9,11 @@ export const plugin = definePlugin<true>((context, deps) => {
       read: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
+        defaultValue: false,
       },
-      uuid: {
+      uid: {
         type: DataTypes.UUIDV4,
-        allowNull: false,
         defaultValue: DataTypes.UUIDV4,
-        unique: true,
         primaryKey: true,
       },
       id: {
@@ -41,15 +40,26 @@ export const plugin = definePlugin<true>((context, deps) => {
     },
     {
       sequelize: context.sequelize,
+      indexes: [
+        {
+          unique: true,
+          fields: ['PluginId', 'uid'],
+        },
+      ],
     }
   );
 
   context.store.atomModel = atomModel;
 
-  atomModel.belongsTo(deps.storageManager.pluginModel);
+  atomModel.belongsTo(deps.storageManager.pluginModel, {
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+    foreignKey: {
+      allowNull: false,
+    },
+  });
+
   deps.storageManager.pluginModel.hasOne(atomModel);
-  atomModel.belongsTo(deps.storageManager.tasksModel);
-  deps.storageManager.tasksModel.hasOne(atomModel);
 
   context.register.fastifyPlugin(function (fastify, options, done) {
     // will be /api/atom/xxxx
