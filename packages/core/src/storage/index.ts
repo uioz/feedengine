@@ -27,7 +27,7 @@ export class PluginSettings extends Model<
   InferAttributes<PluginSettings>,
   InferCreationAttributes<PluginSettings>
 > {
-  declare PluginId: ForeignKey<Tasks['id']>;
+  declare PluginId: ForeignKey<Plugins['id']>;
   declare settings: any;
 
   declare Plugin: NonAttribute<Plugins>;

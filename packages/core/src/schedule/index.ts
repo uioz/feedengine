@@ -2,6 +2,7 @@ import type {TopDeps} from '../index.js';
 import type {Closeable, ScheduleRes} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
 import {TaskWrap} from '../task/index.js';
+import {PluginState} from '../plugins/index.js';
 
 export enum ScheduleType {
   core,
@@ -20,6 +21,7 @@ export class ScheduleManager implements Closeable {
   storageManager: TopDeps['storageManager'];
   schedulesModel: TopDeps['storageManager']['schedulesModel'];
   taskManager: TopDeps['taskManager'];
+  pluginManager: TopDeps['pluginManager'];
   refs = new Map<
     number,
     {
@@ -29,7 +31,7 @@ export class ScheduleManager implements Closeable {
     }
   >();
 
-  constructor({log, storageManager, taskManager}: TopDeps) {
+  constructor({log, storageManager, taskManager, pluginManager}: TopDeps) {
     this.log = log.child({source: ScheduleManager.name});
 
     this.storageManager = storageManager;
@@ -37,6 +39,8 @@ export class ScheduleManager implements Closeable {
     this.schedulesModel = storageManager.schedulesModel;
 
     this.taskManager = taskManager;
+
+    this.pluginManager = pluginManager;
   }
 
   private taskSuccessCallback = (taskId: number) => {
@@ -227,22 +231,24 @@ export class ScheduleManager implements Closeable {
       },
     });
 
-    return schedules.map(
-      ({id, TaskId: taskId, type, lastRun, createdAt, trigger, Task: {plugin, task, name}}) => {
-        return {
-          id,
-          taskId,
-          type,
-          lastRun,
-          createdAt,
-          trigger,
-          state: this.refs.get(id)?.taskRef?.state,
-          plugin,
-          task,
-          name,
-        };
-      }
-    );
+    return schedules
+      .map(
+        ({id, TaskId: taskId, type, lastRun, createdAt, trigger, Task: {plugin, task, name}}) => {
+          return {
+            id,
+            taskId,
+            type,
+            lastRun,
+            createdAt,
+            trigger,
+            state: this.refs.get(id)?.taskRef?.state,
+            plugin,
+            task,
+            name,
+          };
+        }
+      )
+      .filter((item) => this.pluginManager.pluginStates.get(PluginState.actived)!.has(item.plugin));
   }
 
   async execManualTask(id: number) {

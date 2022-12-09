@@ -71,9 +71,6 @@ export const plugin = definePlugin<true>((context, deps) => {
   });
 
   return {
-    async onCreate() {
-      await atomModel.sync();
-    },
     async onDispose() {
       context.sequelize.modelManager.removeModel(atomModel);
     },

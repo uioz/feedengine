@@ -134,6 +134,8 @@ export class AppManager implements Initable, Closeable {
       this.deps.scheduleManager.active();
     });
 
+    await this.deps.storageManager.sequelize.sync();
+
     this.deps.pluginManager.create();
 
     await this.deps.serverManager.init();
