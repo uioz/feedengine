@@ -1,7 +1,7 @@
 export * from './types/index.js';
 import {definePlugin} from 'feedengine-plugin';
 import {DataTypes} from 'sequelize';
-import {Atom} from './model.js';
+import {Atom} from './model/index.js';
 
 export const plugin = definePlugin<true>((context, deps) => {
   const atomModel = Atom.init(

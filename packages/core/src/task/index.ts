@@ -40,6 +40,7 @@ export class TaskWrap {
   taskMeta!: TaskMeta;
   settings: unknown;
   ioQueue!: queueAsPromised<() => Promise<any>>;
+  throttleQueue: Array<fastq.queueAsPromised> = [];
   task!: Task;
   log!: TopDeps['log'];
   taskId!: number;
@@ -181,6 +182,8 @@ export class TaskWrap {
           }
         }, 1);
 
+        this.throttleQueue.push(queue);
+
         return queue.push;
       }) as any,
       page: {
@@ -244,21 +247,27 @@ export class TaskWrap {
 
     this.progress.end();
 
+    if (this.pageRef) {
+      this.deps.driverManager.releasePage(this.pageRef);
+      this.pageRef = null;
+    }
+    for (const queue of this.throttleQueue) {
+      queue.pause();
+      queue.killAndDrain();
+    }
+    this.throttleQueue = [];
+    this.ioQueue.pause();
+    this.ioQueue.killAndDrain();
     try {
-      if (this.pageRef) {
-        this.deps.driverManager.releasePage(this.pageRef);
-        this.pageRef = null;
-      }
       this.task.destroy();
-      this.successCallback = null;
     } catch (error) {
       this.log.error(error);
-    } finally {
-      this.taskMeta.tasksInRunning.splice(
-        this.taskMeta.tasksInRunning.findIndex((item) => item === this),
-        1
-      );
     }
+    this.taskMeta.tasksInRunning.splice(
+      this.taskMeta.tasksInRunning.findIndex((item) => item === this),
+      1
+    );
+    this.successCallback = null;
   }
 }
 
@@ -563,6 +572,7 @@ export class TaskManager implements Closeable, Initable {
 
     await Promise.all(
       allQueue.map((queue) => {
+        queue.pause();
         queue.kill();
 
         return queue.drained();

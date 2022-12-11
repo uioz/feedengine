@@ -2,7 +2,7 @@
 // http://www.atomenabled.org/developers/syndication
 // https://datatracker.ietf.org/doc/html/rfc4287
 import type {ModelStatic} from 'sequelize';
-import type {Atom} from '../model.js';
+import type {Atom} from '../model/index.js';
 
 export type AtomModel = Atom;
 

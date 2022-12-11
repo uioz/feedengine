@@ -8,7 +8,7 @@ import {
   NonAttribute,
 } from 'sequelize';
 import type {PluginModel} from 'feedengine';
-import {AtomAuthor, AtomCategory, AtomContributor, AtomContent, AtomLink} from './types/index.js';
+import {AtomAuthor, AtomCategory, AtomContributor, AtomContent, AtomLink} from '../types/index.js';
 
 export class Atom extends Model<InferAttributes<Atom>, InferCreationAttributes<Atom>> {
   declare read: boolean;
