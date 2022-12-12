@@ -56,9 +56,13 @@ contaienr.register({
   feedengine: asValue(feedengine),
   prod: asValue(env.NODE_ENV === 'production'),
   gotScraping: asFunction(async ({appManager}: TopDeps) => {
-    return gotScraping.extend({
-      proxyUrl: (await appManager.getProxy()).proxyUrl,
-    } as any);
+    const proxyUrl = (await appManager.getProxy()).proxyUrl;
+    if (proxyUrl) {
+      return gotScraping.extend({
+        proxyUrl,
+      } as any);
+    }
+    return gotScraping;
   }),
   toughCookie: asValue(toughCookie),
   serializeForTough: asValue(serializeForTough),

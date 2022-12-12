@@ -18,7 +18,7 @@ export class AppManager implements Initable, Closeable {
     process.on('exit', () => this.log.info('exit'));
   }
 
-  private async checkDatabase() {
+  private async syncPlugins() {
     this.firstBooting =
       (await this.deps.storageManager.pluginModel.findOne({
         where: {
@@ -33,15 +33,12 @@ export class AppManager implements Initable, Closeable {
       });
     }
 
-    try {
-      await this.deps.storageManager.pluginModel.bulkCreate(
-        this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version}))
-      );
-    } catch (error) {
-      //
-    }
-
-    await this.deps.settingManager.checkGlobalSettings();
+    await this.deps.storageManager.pluginModel.bulkCreate(
+      this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version})),
+      {
+        ignoreDuplicates: true,
+      }
+    );
   }
 
   async getServerConfig() {
@@ -119,12 +116,15 @@ export class AppManager implements Initable, Closeable {
   async init() {
     this.log.info(`init`);
 
-    await Promise.all([this.deps.pluginManager.init(), this.deps.storageManager.init()]);
+    await Promise.all([this.deps.storageManager.init(), this.deps.pluginManager.loadPlugins()]);
 
-    await this.checkDatabase();
+    await Promise.all([this.syncPlugins(), this.deps.settingManager.syncGlobalSettings()]);
 
     await this.deps.taskManager.init();
 
+    await this.deps.pluginManager.init();
+
+    // TODO: 如果首次启动, 禁止一切非核心插件的启动
     if (!this.firstBooting) {
       await this.deps.driverManager.init();
     }

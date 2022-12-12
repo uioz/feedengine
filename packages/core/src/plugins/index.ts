@@ -14,6 +14,7 @@ import {
   PluginContextStore,
   ProgressMessage,
   InjectionKey,
+  PluginPerformanceSettings,
 } from '../types/index.js';
 import mitt, {Emitter} from 'mitt';
 import fastifyStatic from '@fastify/static';
@@ -21,6 +22,7 @@ import type {FastifyPluginCallback} from 'fastify';
 import {EventEmitter} from 'node:events';
 import {NotificationType} from '../message/index.js';
 import type {Page} from 'puppeteer-core';
+import fastq, {type queueAsPromised} from 'fastq';
 
 export enum PluginState {
   ready,
@@ -51,6 +53,9 @@ export class PluginWrap implements PluginOptions, Initable {
   pageRef: Page | null = null;
   log: TopDeps['log'];
   provideStore = new Map<InjectionKey<any>, any>();
+  performanceSettings!: PluginPerformanceSettings;
+  taskConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
+  ioConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
 
   constructor(
     private options: PluginOptionsConstructor,
@@ -73,6 +78,7 @@ export class PluginWrap implements PluginOptions, Initable {
         this.onActive();
       }
     });
+
     this.log = this.deps.log.child({source: this.name});
 
     this.progress = this.deps.messageManager.progress<PluginProgress>('PluginProgress', name);
@@ -129,6 +135,14 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async init() {
+    const {plugins} = await this.deps.appManager.getPerformance();
+
+    for (const plugin of plugins) {
+      if (plugin.name === this.name) {
+        this.performanceSettings = plugin;
+      }
+    }
+
     const no = (type: NotificationType) => this.deps.messageManager.notification(this.name)[type];
 
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
@@ -190,7 +204,7 @@ export class PluginWrap implements PluginOptions, Initable {
             throw new Error('the register only works before any hooks execution');
           }
 
-          this.deps.taskManager.register(this.name, taskName, taskConstructor);
+          this.deps.taskManager.register(this, taskName, taskConstructor);
         },
       },
       settings: {
@@ -265,12 +279,21 @@ export class PluginWrap implements PluginOptions, Initable {
         }
       }
 
-      // feedengine-app-plugin 默认使用 / 作为 baseUrl
-      // 如果先于其他插件注册到 fastify 会覆盖其他插件的路由
-      // 因为 feedengine-app-plugin 会拦截一切非文件的请求响应 index.html
-      if (this.name === 'feedengine-app-plugin') {
-        this.deps.pluginManager.postInit.push(() => this.registerFastifyPlugin());
-      }
+      this.registerFastifyPlugin();
+
+      const ioConcurrencyQueue = this.deps.taskManager.ioConcurrencyQueue;
+
+      this.ioConcurrencyQueue = fastq.promise(
+        (job) => ioConcurrencyQueue.push(job),
+        this.performanceSettings.maxIo
+      );
+
+      const taskConcurrencyQueue = this.deps.taskManager.taskConcurrencyQueue;
+
+      this.taskConcurrencyQueue = fastq.promise(
+        (job) => taskConcurrencyQueue.push(job),
+        this.performanceSettings.maxTask
+      );
 
       this.plugin = plugin;
 
@@ -447,7 +470,6 @@ export class PluginManager implements Initable, Closeable {
   loadedPlugins: Array<PluginWrap> = [];
   log: TopDeps['log'];
   appManager: TopDeps['appManager'];
-  postInit: Array<() => void> = [];
   store: PluginContextStore = {};
   pluginStates = new Map<PluginState, Set<string>>([
     [PluginState.init, new Set()],
@@ -463,7 +485,7 @@ export class PluginManager implements Initable, Closeable {
     this.appManager = deps.appManager;
   }
 
-  private async loadPlugins() {
+  async loadPlugins() {
     const context = mitt<PluginSpaceEvent>();
 
     const nodeModulesDir = resolve(this.deps.feedengine.rootDir, 'node_modules');
@@ -512,16 +534,18 @@ export class PluginManager implements Initable, Closeable {
     ).filter((item) => item !== undefined) as Array<PluginWrap>;
 
     this.loadedPlugins.forEach(({name}) => loadedPluginNamesSet.add(name));
-
-    await Promise.all(this.loadedPlugins.map((plugin) => plugin.init()));
   }
 
   async init() {
-    await this.loadPlugins();
+    await Promise.all(
+      this.loadedPlugins
+        .filter(({name}) => !builtinPlugins.has(name))
+        .map((plugin) => plugin.init())
+    );
 
-    this.postInit.forEach((post) => post());
-
-    this.postInit = [];
+    await Promise.all(
+      this.loadedPlugins.filter(({name}) => builtinPlugins.has(name)).map((plugin) => plugin.init())
+    );
 
     this.log.info(`init`);
   }

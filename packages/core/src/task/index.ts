@@ -2,7 +2,6 @@
 import type {
   Closeable,
   TaskConstructor,
-  PluginPerformanceSettings,
   AppSettings,
   Initable,
   Task,
@@ -16,19 +15,18 @@ import {Sequelize} from 'sequelize';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
 import {Page} from 'puppeteer-core';
-import {PluginState} from '../plugins/index.js';
+import {PluginState, PluginWrap} from '../plugins/index.js';
 import {NotificationType} from '../message/index.js';
 
 interface TaskMeta {
-  pluginName: string;
+  plugin: PluginWrap;
   taskName: string;
-  pluginPerformanceSettings: PluginPerformanceSettings;
   taskConstructor: TaskConstructor;
   tasksInRunning: Array<TaskWrap>;
 }
 
 interface NonStdTaskMeta {
-  pluginName: string;
+  plugin: PluginWrap;
   taskName: string;
   taskConstructor: unknown;
 }
@@ -70,13 +68,10 @@ export class TaskWrap {
   constructor(
     private deps: TopDeps,
     private taskRef: TaskRef,
-    public pluginId: number,
     public taskId: number,
     public scheduleId: number,
     private taskMeta: TaskMeta,
-    private settings: unknown,
-    private ioQueue: queueAsPromised<() => Promise<any>>,
-    private taskQueue: queueAsPromised<() => Promise<void>>
+    private settings: unknown
   ) {
     this.progress = this.deps.messageManager.progress('TaskProgress', taskMeta.taskName);
     this.progress.send({
@@ -85,10 +80,10 @@ export class TaskWrap {
     taskMeta.tasksInRunning.push(this);
 
     this.log = this.deps.log.child({
-      source: `${taskMeta.pluginName}@${taskMeta.taskName}@${taskId}`,
+      source: `${taskMeta.plugin.name}@${taskMeta.taskName}@${taskId}`,
     });
 
-    taskQueue
+    taskMeta.plugin.taskConcurrencyQueue
       .push(() => {
         if (this.state === TaskState.pending) {
           this.state = TaskState.running;
@@ -123,22 +118,22 @@ export class TaskWrap {
     const no = (type: NotificationType) => {
       checkIsStillRunning();
       return this.deps.messageManager.notification(
-        `${this.taskMeta.pluginName}@${this.taskMeta.taskName}`
+        `${this.taskMeta.plugin.name}@${this.taskMeta.taskName}`
       )[type];
     };
 
     const co = (type: NotificationType) => {
       checkIsStillRunning();
       return this.deps.messageManager.confirm(
-        `${this.taskMeta.pluginName}@${this.taskMeta.taskName}`
+        `${this.taskMeta.plugin.name}@${this.taskMeta.taskName}`
       )[type];
     };
 
     this.task = this.taskMeta.taskConstructor.setup!({
       taskName: this.taskMeta.taskName,
-      pluginName: this.taskMeta.pluginName,
+      pluginName: this.taskMeta.plugin.name,
       taskId: this.taskId,
-      pluginId: this.pluginId,
+      scheduleId: this.scheduleId,
       log: this.log,
       settings: this.settings,
       sequelize: this.deps.storageManager.sequelize,
@@ -163,7 +158,7 @@ export class TaskWrap {
       },
       ioQueue: ((arg: any) => {
         if (typeof arg === 'function') {
-          return this.ioQueue.push(() => {
+          return this.taskMeta.plugin.ioConcurrencyQueue.push(() => {
             checkIsStillRunning();
             return arg();
           });
@@ -183,7 +178,7 @@ export class TaskWrap {
           }
 
           try {
-            return await this.ioQueue.push(() => {
+            return await this.taskMeta.plugin.ioConcurrencyQueue.push(() => {
               checkIsStillRunning();
               return job();
             });
@@ -224,9 +219,7 @@ export class TaskWrap {
       inject: <T>(key: InjectionKey<T>) => {
         checkIsStillRunning();
 
-        return this.deps.pluginManager.loadedPlugins
-          .find(({name}) => name === this.taskMeta.pluginName)!
-          .provideStore.get(key);
+        return this.taskMeta.plugin.provideStore.get(key);
       },
     });
 
@@ -271,8 +264,6 @@ export class TaskWrap {
     }
 
     this.throttleQueue = [];
-    this.ioQueue.pause();
-    this.ioQueue.killAndDrain();
 
     this.taskRef._destroyCb = this.taskRef._successCb = undefined;
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -297,18 +288,14 @@ export class TaskManager implements Closeable, Initable {
   deps: TopDeps;
   messageManager: TopDeps['messageManager'];
   registeredStdTask = new Map<string, TaskMeta>();
-  registeredStdTree = new Map<string, Set<string>>();
+  registeredStdNames = new Map<string, Set<string>>();
   nonStdTaskTree = new Map<string, Set<NonStdTaskMeta>>();
   tasksModel: TopDeps['storageManager']['tasksModel'];
-  buffer: Array<[string, string, unknown]> = [];
+  buffer: Array<[PluginWrap, string, unknown]> = [];
   isReady = false;
   performance!: AppSettings['performance'];
-
   taskConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
-  taskConcurrencyQueueForPlugin = new Map<string, queueAsPromised<() => Promise<void>>>();
-
   ioConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
-  ioConcurrencyQueueForPlugin = new Map<string, queueAsPromised<() => Promise<void>>>();
 
   constructor(deps: TopDeps) {
     this.deps = deps;
@@ -368,22 +355,27 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  register(pluginName: string, taskName: string, taskConstructor: unknown) {
+  register(plugin: PluginWrap, taskName: string, taskConstructor: unknown) {
     if (this.isReady) {
-      if (this.deps.pluginManager.pluginStates.get(PluginState.actived)!.has(pluginName)) {
+      if (this.deps.pluginManager.pluginStates.get(PluginState.actived)!.has(plugin.name)) {
         if (isStandardTask(taskConstructor)) {
-          this.registeredStdTask.set(`${pluginName}@${taskName}`, {
+          this.registeredStdTask.set(`${plugin.name}@${taskName}`, {
             taskConstructor,
-            pluginName,
+            plugin,
             taskName,
-            pluginPerformanceSettings: this.performance.plugins.find(
-              (item) => item.name === pluginName
-            )!,
             tasksInRunning: [],
           });
+
+          const tasks = this.registeredStdNames.get(plugin.name);
+
+          if (tasks) {
+            tasks.add(taskName);
+          } else {
+            this.registeredStdNames.set(plugin.name, new Set([taskName]));
+          }
         } else {
           const nonStdTaskMeta = {
-            pluginName,
+            plugin,
             taskName,
             taskConstructor,
           };
@@ -396,27 +388,19 @@ export class TaskManager implements Closeable, Initable {
             this.nonStdTaskTree.set(taskName, new Set([nonStdTaskMeta]));
           }
         }
-
-        const tasks = this.registeredStdTree.get(pluginName);
-
-        if (tasks) {
-          tasks.add(taskName);
-        } else {
-          this.registeredStdTree.set(pluginName, new Set([taskName]));
-        }
       }
     } else {
-      this.buffer.push([pluginName, taskName, taskConstructor]);
+      this.buffer.push([plugin, taskName, taskConstructor]);
     }
   }
 
   unRegisterTaskByPlugin(pluginName: string) {
     if (this.buffer.length) {
-      this.buffer = this.buffer.filter((item) => item[0] !== pluginName);
+      this.buffer = this.buffer.filter((item) => item[0].name !== pluginName);
     }
 
     for (const [key, value] of this.registeredStdTask.entries()) {
-      if (value.pluginName === pluginName) {
+      if (value.plugin.name === pluginName) {
         for (const task of value.tasksInRunning) {
           task.destroy();
         }
@@ -424,11 +408,11 @@ export class TaskManager implements Closeable, Initable {
       }
     }
 
-    this.registeredStdTree.delete(pluginName);
+    this.registeredStdNames.delete(pluginName);
 
     for (const nonStdSet of this.nonStdTaskTree.values()) {
       for (const nonStdTask of nonStdSet) {
-        if (nonStdTask.pluginName === pluginName) {
+        if (nonStdTask.plugin.name === pluginName) {
           nonStdSet.delete(nonStdTask);
         }
       }
@@ -440,9 +424,11 @@ export class TaskManager implements Closeable, Initable {
     const pluginNames = [];
     const taskNames = [];
 
-    for (const {pluginName, taskName} of this.registeredStdTask.values()) {
+    this.registeredStdNames.values;
+
+    for (const [pluginName, taskNameSets] of this.registeredStdNames.entries()) {
       pluginNames.push(pluginName);
-      taskNames.push(taskName);
+      taskNames.push(...taskNameSets);
     }
 
     const data = await this.tasksModel.findAll({
@@ -459,7 +445,7 @@ export class TaskManager implements Closeable, Initable {
     const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
 
     for (const {plugin, task, taskCount} of data) {
-      if (this.registeredStdTree.get(plugin)?.has(task)) {
+      if (this.registeredStdNames.get(plugin)?.has(task)) {
         if (temp[plugin]) {
           temp[plugin].push({
             task,
@@ -480,7 +466,7 @@ export class TaskManager implements Closeable, Initable {
     const data: TasksRes = {};
 
     for (const {
-      pluginName,
+      plugin,
       taskName,
       taskConstructor: {setup, description, link},
     } of this.registeredStdTask.values()) {
@@ -492,22 +478,22 @@ export class TaskManager implements Closeable, Initable {
         instances: [],
       };
 
-      if (data[pluginName]) {
-        data[pluginName].push(temp);
+      if (data[plugin.name]) {
+        data[plugin.name].push(temp);
       } else {
-        data[pluginName] = [temp];
+        data[plugin.name] = [temp];
       }
     }
 
     const tasks = await this.tasksModel.findAll({
       where: {
-        plugin: [...this.registeredStdTree.keys()],
-        task: [...this.registeredStdTree.values()].map((set) => [...set]).flat(),
+        plugin: [...this.registeredStdNames.keys()],
+        task: [...this.registeredStdNames.values()].map((set) => [...set]).flat(),
       },
     });
 
     for (const {plugin, task, name, id, settings, createdAt} of tasks) {
-      if (this.registeredStdTree.get(plugin)?.has(task)) {
+      if (this.registeredStdNames.get(plugin)?.has(task)) {
         data[plugin]!.find(({taskName}) => taskName === task)!.instances.push({
           name,
           id,
@@ -525,7 +511,7 @@ export class TaskManager implements Closeable, Initable {
       throw new Error('');
     }
 
-    const handler: TaskRef = {
+    const taskRef: TaskRef = {
       taskId,
       state: TaskState.pending,
       onSuccess(cb: (taskId: number) => void) {
@@ -548,44 +534,10 @@ export class TaskManager implements Closeable, Initable {
 
       const taskMeta = this.registeredStdTask.get(`${pluginName}@${taskName}`)!;
 
-      let taskQueueForPlugin = this.taskConcurrencyQueueForPlugin.get(pluginName);
-
-      if (taskQueueForPlugin === undefined) {
-        taskQueueForPlugin = fastq.promise(
-          (job) => this.taskConcurrencyQueue.push(job),
-          taskMeta.pluginPerformanceSettings.maxTask
-        );
-
-        this.taskConcurrencyQueueForPlugin.set(pluginName, taskQueueForPlugin);
-      }
-
-      let ioQueueForPlugin = this.ioConcurrencyQueueForPlugin.get(pluginName);
-
-      if (ioQueueForPlugin === undefined) {
-        ioQueueForPlugin = fastq.promise(
-          (job) => this.ioConcurrencyQueue.push(job),
-          taskMeta.pluginPerformanceSettings.maxIo
-        );
-      }
-
-      new TaskWrap(
-        this.deps,
-        handler,
-        (await this.deps.storageManager.pluginModel.findOne({
-          where: {
-            name: pluginName,
-          },
-        }))!.id,
-        taskId,
-        scheduleId,
-        taskMeta,
-        settings,
-        ioQueueForPlugin,
-        taskQueueForPlugin
-      );
+      new TaskWrap(this.deps, taskRef, taskId, scheduleId, taskMeta, settings);
     })();
 
-    return handler;
+    return taskRef;
   }
 
   async createTask(
@@ -617,16 +569,17 @@ export class TaskManager implements Closeable, Initable {
   async close() {
     this.closed = true;
 
-    const allQueue = [...this.taskConcurrencyQueueForPlugin.values(), this.taskConcurrencyQueue];
+    const taskQueues = [
+      ...[...this.registeredStdTask.values()].map((item) => item.plugin.taskConcurrencyQueue),
+      this.taskConcurrencyQueue,
+    ];
 
-    await Promise.all(
-      allQueue.map((queue) => {
-        queue.pause();
-        queue.kill();
+    for (const taskQueue of taskQueues) {
+      taskQueue.pause();
+      taskQueue.kill();
+    }
 
-        return queue.drained();
-      })
-    );
+    await this.taskConcurrencyQueue.drain();
 
     this.log.info('close');
   }

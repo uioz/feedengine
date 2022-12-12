@@ -14,8 +14,8 @@ export interface Task {
 export interface TaskContext<T> {
   pluginName: string;
   taskName: string;
-  pluginId: number;
   taskId: number;
+  scheduleId: number;
   log: Logger;
   settings: T;
   sequelize: Sequelize;

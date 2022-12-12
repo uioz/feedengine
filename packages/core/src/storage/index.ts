@@ -18,7 +18,6 @@ import {
 } from 'sequelize';
 
 export class Plugins extends Model<InferAttributes<Plugins>, InferCreationAttributes<Plugins>> {
-  declare id: CreationOptional<number>;
   declare name: string;
   declare version: string;
 }
@@ -27,7 +26,7 @@ export class PluginSettings extends Model<
   InferAttributes<PluginSettings>,
   InferCreationAttributes<PluginSettings>
 > {
-  declare PluginId: ForeignKey<Plugins['id']>;
+  declare PluginName: ForeignKey<Plugins['name']>;
   declare settings: any;
 
   declare Plugin: NonAttribute<Plugins>;
@@ -101,17 +100,12 @@ export class StorageManager implements Initable, Closeable {
 
     this.pluginModel = Plugins.init(
       {
-        id: {
-          type: DataTypes.INTEGER,
-          autoIncrement: true,
-          primaryKey: true,
-          allowNull: false,
-        },
         version: {
           type: DataTypes.TEXT,
           allowNull: false,
         },
         name: {
+          primaryKey: true,
           type: DataTypes.TEXT,
           unique: true,
           allowNull: false,

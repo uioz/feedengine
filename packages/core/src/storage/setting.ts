@@ -86,7 +86,7 @@ export class SettingManager {
     this.pluginManager = pluginManager;
   }
 
-  async checkGlobalSettings() {
+  async syncGlobalSettings() {
     const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
 
     if (result === null) {
@@ -105,7 +105,7 @@ export class SettingManager {
     } else if (diffPluginsSetting(result.settings.performance, this.pluginManager.loadedPlugins)) {
       this.log.info(`settings.performence was pruned`);
 
-      await this.setPluginSettings(this.feedengine.name, result);
+      await this.setPluginSettings(this.feedengine.name, result.settings);
     }
   }
 
@@ -150,7 +150,7 @@ export class SettingManager {
 
     await this.pluginSettingsModel.upsert({
       settings,
-      PluginId: plugin.id,
+      PluginName: pluginName,
     });
 
     this.pluginSettingCache.set(pluginName, {
