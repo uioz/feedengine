@@ -26,6 +26,15 @@ interface TaskMeta {
   tasksInRunning: Array<TaskWrap>;
 }
 
+export interface TaskRef {
+  _successCb?: (taskId: number) => void;
+  _destroyCb?: () => void;
+  taskId: number;
+  state: TaskState;
+  onSuccess(cb: (taskId: number) => void): TaskRef;
+  destroy(): void;
+}
+
 export enum TaskState {
   pending,
   running,
@@ -37,53 +46,26 @@ class ExitError extends Error {}
 
 export class TaskWrap {
   #state = TaskState.pending;
-  taskMeta!: TaskMeta;
-  settings: unknown;
-  ioQueue!: queueAsPromised<() => Promise<any>>;
   throttleQueue: Array<fastq.queueAsPromised> = [];
   task!: Task;
   log!: TopDeps['log'];
-  taskId!: number;
-  pluginId!: number;
-  successCallback: ((taskId: number) => void) | null = null;
   pageRef: Page | null = null;
   progress!: ProgressHandler<TaskProgress>;
 
-  constructor(private deps: TopDeps) {}
-
-  public get state() {
-    return this.#state;
-  }
-
-  public set state(v: TaskState) {
-    this.#state = v;
-    this.progress.send({
-      state: TaskState[v] as any,
-    });
-    this.log.info(`state ${TaskState[v]}`);
-  }
-
-  init(
-    pluginId: number,
-    taskId: number,
-    taskMeta: TaskMeta,
-    settings: unknown,
-    ioQueue: queueAsPromised<() => Promise<any>>,
-    taskQueue: queueAsPromised<() => Promise<void>>,
-    successCallback: (taskId: number) => void
+  constructor(
+    private deps: TopDeps,
+    private taskRef: TaskRef,
+    public pluginId: number,
+    public taskId: number,
+    private taskMeta: TaskMeta,
+    private settings: unknown,
+    private ioQueue: queueAsPromised<() => Promise<any>>,
+    private taskQueue: queueAsPromised<() => Promise<void>>
   ) {
-    this.pluginId = pluginId;
-    this.taskId = taskId;
-    this.taskMeta = taskMeta;
-    this.settings = settings;
-    this.ioQueue = ioQueue;
-    this.successCallback = successCallback;
     this.progress = this.deps.messageManager.progress('TaskProgress', taskMeta.taskName);
-
     this.progress.send({
       state: 'pending',
     });
-
     taskMeta.tasksInRunning.push(this);
 
     this.log = this.deps.log.child({
@@ -98,6 +80,21 @@ export class TaskWrap {
         return this.run();
       })
       .catch(this.errorHandler);
+
+    this.taskRef._destroyCb = () => this.destroy();
+  }
+
+  public get state() {
+    return this.#state;
+  }
+
+  public set state(v: TaskState) {
+    this.#state = v;
+    this.taskRef.state = v;
+    this.progress.send({
+      state: TaskState[v] as any,
+    });
+    this.log.info(`state ${TaskState[v]}`);
   }
 
   async run() {
@@ -219,7 +216,7 @@ export class TaskWrap {
 
     try {
       await this.task.run();
-      this.successCallback?.(this.taskId);
+      this.taskRef._successCb?.(this.taskId);
       this.destroy();
     } catch (error) {
       this.errorHandler(error);
@@ -251,13 +248,21 @@ export class TaskWrap {
       this.deps.driverManager.releasePage(this.pageRef);
       this.pageRef = null;
     }
+
     for (const queue of this.throttleQueue) {
       queue.pause();
       queue.killAndDrain();
     }
+
     this.throttleQueue = [];
     this.ioQueue.pause();
     this.ioQueue.killAndDrain();
+
+    this.taskRef._destroyCb = this.taskRef._successCb = undefined;
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    this.taskRef = null;
+
     try {
       this.task.destroy();
     } catch (error) {
@@ -267,7 +272,6 @@ export class TaskWrap {
       this.taskMeta.tasksInRunning.findIndex((item) => item === this),
       1
     );
-    this.successCallback = null;
   }
 }
 
@@ -475,7 +479,7 @@ export class TaskManager implements Closeable, Initable {
     return data;
   }
 
-  execTask(taskId: number, successCallback: (taskId: number) => void) {
+  execTask(taskId: number) {
     if (this.closed) {
       throw new Error('');
     }
@@ -488,55 +492,66 @@ export class TaskManager implements Closeable, Initable {
       }
     }
 
-    const task = new TaskWrap(this.deps);
+    const handler: TaskRef = {
+      taskId,
+      state: TaskState.pending,
+      onSuccess(cb: (taskId: number) => void) {
+        this._successCb = cb;
+        return this;
+      },
+      destroy() {
+        this._destroyCb?.();
+      },
+    };
 
-    this.tasksModel
-      .findOne({
+    (async () => {
+      const data = await this.tasksModel.findOne({
         where: {
           id: taskId,
         },
-      })
-      .then(async (data) => {
-        const {plugin: pluginName, task: taskName, settings} = data!;
-
-        const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`)!;
-
-        let taskQueueForPlugin = this.taskConcurrencyQueueForPlugin.get(pluginName);
-
-        if (taskQueueForPlugin === undefined) {
-          taskQueueForPlugin = fastq.promise(
-            (job) => this.taskConcurrencyQueue.push(job),
-            taskMeta.pluginPerformanceSettings.maxTask
-          );
-
-          this.taskConcurrencyQueueForPlugin.set(pluginName, taskQueueForPlugin);
-        }
-
-        let ioQueueForPlugin = this.ioConcurrencyQueueForPlugin.get(pluginName);
-
-        if (ioQueueForPlugin === undefined) {
-          ioQueueForPlugin = fastq.promise(
-            (job) => this.ioConcurrencyQueue.push(job),
-            taskMeta.pluginPerformanceSettings.maxIo
-          );
-        }
-
-        task.init(
-          (await this.deps.storageManager.pluginModel.findOne({
-            where: {
-              name: pluginName,
-            },
-          }))!.id,
-          taskId,
-          taskMeta,
-          settings,
-          ioQueueForPlugin,
-          taskQueueForPlugin,
-          successCallback
-        );
       });
 
-    return task;
+      const {plugin: pluginName, task: taskName, settings} = data!;
+
+      const taskMeta = this.allregisteredTask.get(`${pluginName}@${taskName}`)!;
+
+      let taskQueueForPlugin = this.taskConcurrencyQueueForPlugin.get(pluginName);
+
+      if (taskQueueForPlugin === undefined) {
+        taskQueueForPlugin = fastq.promise(
+          (job) => this.taskConcurrencyQueue.push(job),
+          taskMeta.pluginPerformanceSettings.maxTask
+        );
+
+        this.taskConcurrencyQueueForPlugin.set(pluginName, taskQueueForPlugin);
+      }
+
+      let ioQueueForPlugin = this.ioConcurrencyQueueForPlugin.get(pluginName);
+
+      if (ioQueueForPlugin === undefined) {
+        ioQueueForPlugin = fastq.promise(
+          (job) => this.ioConcurrencyQueue.push(job),
+          taskMeta.pluginPerformanceSettings.maxIo
+        );
+      }
+
+      new TaskWrap(
+        this.deps,
+        handler,
+        (await this.deps.storageManager.pluginModel.findOne({
+          where: {
+            name: pluginName,
+          },
+        }))!.id,
+        taskId,
+        taskMeta,
+        settings,
+        ioQueueForPlugin,
+        taskQueueForPlugin
+      );
+    })();
+
+    return handler;
   }
 
   async createTask(

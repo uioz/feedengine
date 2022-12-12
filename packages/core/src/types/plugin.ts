@@ -34,6 +34,9 @@ export interface PluginContextStore {}
 // eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unused-vars
 export interface InjectionKey<T> extends Symbol {}
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface PluginRegisterContext {}
+
 export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'off' | 'emit'> {
   rootDir: string;
   feedengineVersion: string;
@@ -56,7 +59,10 @@ export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'o
   exit(): void;
   register: {
     fastifyPlugin(callback: FastifyPluginCallback<any>): void;
-    task(taskName: string, task: TaskConstructor): void;
+    task<T extends string>(
+      taskName: T,
+      task: T extends keyof PluginRegisterContext ? PluginRegisterContext[T] : TaskConstructor
+    ): void;
   };
   settings: {
     get<T>(): Promise<{settings: T; version: string} | null>;

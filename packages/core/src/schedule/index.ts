@@ -1,7 +1,7 @@
 import type {TopDeps} from '../index.js';
 import type {Closeable, ScheduleRes} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
-import {TaskWrap} from '../task/index.js';
+import {TaskRef} from '../task/index.js';
 import {PluginState} from '../plugins/index.js';
 
 export enum ScheduleType {
@@ -25,7 +25,7 @@ export class ScheduleManager implements Closeable {
   refs = new Map<
     number,
     {
-      taskRef?: TaskWrap;
+      taskRef?: TaskRef;
       taskId: number;
       job?: Job;
     }
@@ -63,7 +63,7 @@ export class ScheduleManager implements Closeable {
         break;
       case ScheduleType.startup:
         this.refs.set(id, {
-          taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
+          taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
           taskId,
         });
         break;
@@ -80,7 +80,7 @@ export class ScheduleManager implements Closeable {
 
         const job = scheduleJob({start: lastRun, rule: getCrontab(day)}, () => {
           this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
+            taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
             taskId,
             job,
           });
@@ -88,7 +88,7 @@ export class ScheduleManager implements Closeable {
 
         if (lastRun.getDate() + parseInt(day) === new Date().getDate()) {
           this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId, this.taskSuccessCallback),
+            taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
             taskId,
           });
         }
@@ -268,7 +268,9 @@ export class ScheduleManager implements Closeable {
       throw new Error('');
     }
 
-    scheduleRef.taskRef = this.taskManager.execTask(result.TaskId, this.taskSuccessCallback);
+    scheduleRef.taskRef = this.taskManager
+      .execTask(result.TaskId)
+      .onSuccess(this.taskSuccessCallback);
   }
 
   async close() {
