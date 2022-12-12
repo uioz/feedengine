@@ -3,6 +3,7 @@ import type {Closeable, ScheduleRes} from '../types/index.js';
 import {type Job, scheduleJob} from 'node-schedule';
 import {TaskRef} from '../task/index.js';
 import {PluginState} from '../plugins/index.js';
+import dayjs from 'dayjs';
 
 export enum ScheduleType {
   core,
@@ -30,6 +31,7 @@ export class ScheduleManager implements Closeable {
       job?: Job;
     }
   >();
+  scheduleId = 0;
 
   constructor({log, storageManager, taskManager, pluginManager}: TopDeps) {
     this.log = log.child({source: ScheduleManager.name});
@@ -49,7 +51,7 @@ export class ScheduleManager implements Closeable {
 
   private scheduleTask(
     lastRun: Date | null,
-    id: number,
+    scheduleId: number,
     trigger: string | null,
     type: number,
     taskId: number
@@ -57,13 +59,15 @@ export class ScheduleManager implements Closeable {
     const matchsDay = /^d(\d+)/;
     switch (type) {
       case ScheduleType.manual:
-        this.refs.set(id, {
+        this.refs.set(scheduleId, {
           taskId,
         });
         break;
       case ScheduleType.startup:
-        this.refs.set(id, {
-          taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
+        this.refs.set(scheduleId, {
+          taskRef: this.taskManager
+            .execTask(taskId, scheduleId)
+            .onSuccess(this.taskSuccessCallback),
           taskId,
         });
         break;
@@ -79,16 +83,20 @@ export class ScheduleManager implements Closeable {
         }
 
         const job = scheduleJob({start: lastRun, rule: getCrontab(day)}, () => {
-          this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
+          this.refs.set(scheduleId, {
+            taskRef: this.taskManager
+              .execTask(taskId, scheduleId)
+              .onSuccess(this.taskSuccessCallback),
             taskId,
             job,
           });
         });
 
-        if (lastRun.getDate() + parseInt(day) === new Date().getDate()) {
-          this.refs.set(id, {
-            taskRef: this.taskManager.execTask(taskId).onSuccess(this.taskSuccessCallback),
+        if (dayjs(lastRun).add(parseInt(day), 'day').isSame(dayjs(), 'date')) {
+          this.refs.set(scheduleId, {
+            taskRef: this.taskManager
+              .execTask(taskId, scheduleId)
+              .onSuccess(this.taskSuccessCallback),
             taskId,
           });
         }
@@ -194,8 +202,8 @@ export class ScheduleManager implements Closeable {
     return id;
   }
 
-  async cancelSchedule(id: number) {
-    const ref = this.refs.get(id);
+  async cancelSchedule(scheduleId: number) {
+    const ref = this.refs.get(scheduleId);
 
     if (ref === undefined) {
       throw new Error('');
@@ -269,7 +277,7 @@ export class ScheduleManager implements Closeable {
     }
 
     scheduleRef.taskRef = this.taskManager
-      .execTask(result.TaskId)
+      .execTask(result.TaskId, this.scheduleId--)
       .onSuccess(this.taskSuccessCallback);
   }
 
