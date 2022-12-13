@@ -119,6 +119,10 @@ export class StorageManager implements Initable, Closeable {
 
     this.settingsModel = PluginSettings.init(
       {
+        PluginName: {
+          type: DataTypes.STRING,
+          unique: true,
+        },
         settings: {
           type: DataTypes.JSON,
           allowNull: false,
@@ -130,14 +134,11 @@ export class StorageManager implements Initable, Closeable {
       }
     );
 
-    this.settingsModel.belongsTo(this.pluginModel, {
-      foreignKey: {
-        allowNull: false,
-      },
+    this.pluginModel.hasOne(this.settingsModel, {
       onDelete: 'CASCADE',
     });
 
-    this.pluginModel.hasOne(this.settingsModel);
+    this.settingsModel.belongsTo(this.pluginModel);
 
     this.tasksModel = Tasks.init(
       {

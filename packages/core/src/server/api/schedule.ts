@@ -15,7 +15,7 @@ export const scheduleRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
       id: string;
     };
   }>('/schedule/:id/exec', async (req) => {
-    await scheduleManager.execManualTask(parseInt(req.params.id));
+    await scheduleManager.scheduleManualTask(parseInt(req.params.id));
   });
 
   done();

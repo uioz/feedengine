@@ -259,7 +259,7 @@ export class ScheduleManager implements Closeable {
       .filter((item) => this.pluginManager.pluginStates.get(PluginState.actived)!.has(item.plugin));
   }
 
-  async execManualTask(id: number) {
+  async scheduleManualTask(id: number) {
     const scheduleRef = this.refs.get(id);
 
     if (scheduleRef === undefined) {

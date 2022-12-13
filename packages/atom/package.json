@@ -14,7 +14,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "feedengine-plugin": "workspace:^0.1.0"
+    "feedengine-plugin": "workspace:^0.1.0",
+    "xmlbuilder2": "^3.0.2"
   },
   "devDependencies": {
     "feedengine": "workspace:^0.1.0",

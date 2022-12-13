@@ -117,16 +117,12 @@ export class TaskWrap {
 
     const no = (type: NotificationType) => {
       checkIsStillRunning();
-      return this.deps.messageManager.notification(
-        `${this.taskMeta.plugin.name}@${this.taskMeta.taskName}`
-      )[type];
+      return this.deps.messageManager.notification(this.scheduleId + '')[type];
     };
 
     const co = (type: NotificationType) => {
       checkIsStillRunning();
-      return this.deps.messageManager.confirm(
-        `${this.taskMeta.plugin.name}@${this.taskMeta.taskName}`
-      )[type];
+      return this.deps.messageManager.confirm(this.scheduleId + '')[type];
     };
 
     this.task = this.taskMeta.taskConstructor.setup!({

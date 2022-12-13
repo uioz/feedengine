@@ -1,78 +1,99 @@
 export * from './types/index.js';
 import {definePlugin} from 'feedengine-plugin';
-import {DataTypes} from 'sequelize';
-import {Atom} from './model/index.js';
+import {AtomTask} from './types/index.js';
+import {querystringSchema, isValidatedAtomFeed} from './utils.js';
 
 export const plugin = definePlugin<true>((context, deps) => {
-  const atomModel = Atom.init(
-    {
-      read: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      },
-      uid: {
-        type: DataTypes.UUIDV4,
-        defaultValue: DataTypes.UUIDV4,
-        primaryKey: true,
-      },
-      id: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      author: DataTypes.JSON,
-      category: DataTypes.JSON,
-      contributor: DataTypes.JSON,
-      summary: DataTypes.STRING,
-      lang: DataTypes.STRING,
-      content: DataTypes.JSON,
-      updated: {
-        type: DataTypes.DATE,
-        allowNull: false,
-      },
-      link: DataTypes.JSON,
-      title: {
-        type: DataTypes.STRING,
-        allowNull: false,
-      },
-      createdAt: DataTypes.DATE,
-      updatedAt: DataTypes.DATE,
-    },
-    {
-      sequelize: context.sequelize,
-      indexes: [
-        {
-          unique: true,
-          fields: ['PluginId', 'uid'],
-        },
-      ],
-    }
-  );
+  const nonStdTaskTree = deps.taskManager.nonStdTaskTree;
 
-  context.store.atomModel = atomModel;
+  const tasks = nonStdTaskTree.get('atom');
 
-  atomModel.belongsTo(deps.storageManager.pluginModel, {
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE',
-    foreignKey: {
-      allowNull: false,
-    },
-  });
+  context.store.atom = {
+    isValidatedAtomFeed,
+  };
 
-  deps.storageManager.pluginModel.hasOne(atomModel);
+  if (tasks === undefined || tasks.size === 0) {
+    return {};
+  }
 
   context.register.fastifyPlugin(function (fastify, options, done) {
-    // will be /api/atom/xxxx
-    fastify.get('/atom/:provider', async () => {
-      return 'hello world';
-    });
+    const settingManager = deps.settingManager;
+
+    const driverManager = deps.driverManager;
+
+    const sequelize = deps.storageManager.sequelize;
+
+    for (const taskMeta of tasks.values()) {
+      for (const task of taskMeta.taskConstructor as Array<AtomTask>) {
+        const plugin = taskMeta.plugin;
+
+        // will be /api/atom/xxxx
+        fastify.get(
+          `/atom/${taskMeta.plugin}${task.route}`,
+          {
+            schema: {
+              querystring: querystringSchema,
+            },
+          },
+          async (req, res) => {
+            if (plugin.state !== 3) {
+              return res.code(500).send(`plugin not activated`);
+            }
+
+            let pageRef: any;
+
+            try {
+              const result = await task.handler(
+                {
+                  inject: (key) => plugin.provideStore.get(key),
+                  pluginName: plugin.name,
+                  pluginVerison: plugin.version,
+                  pluginSettings: await settingManager.getPluginSettings(plugin.name),
+                  requestPage: async () => {
+                    if (pageRef !== undefined) {
+                      throw new Error('');
+                    }
+
+                    pageRef = await driverManager.requestPage(true);
+
+                    return pageRef;
+                  },
+                  sequelize: sequelize,
+                  store: context.store,
+                  tool: context.tool,
+                },
+                req.params,
+                req.query as any
+              );
+
+              if (typeof result === 'string') {
+                return res.send(result);
+              }
+
+              if (Array.isArray(result)) {
+                // wrap
+                return res.send(result);
+              }
+
+              if (isValidatedAtomFeed(result)) {
+                return res.send(result);
+              }
+
+              return res.code(500).send('feed provided by plugin is invalid');
+            } catch (error) {
+              return res.code(500).send(error);
+            } finally {
+              if (pageRef) {
+                await driverManager.releasePage(pageRef, true);
+              }
+            }
+          }
+        );
+      }
+    }
 
     done();
   });
 
-  return {
-    async onDispose() {
-      context.sequelize.modelManager.removeModel(atomModel);
-    },
-  };
+  return {};
 });
