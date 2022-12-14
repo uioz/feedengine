@@ -34,13 +34,13 @@ export const plugin = definePlugin<true>((context, deps) => {
         const plugin = taskMeta.plugin;
 
         const generator = {
-          content: `${taskMeta.plugin} - Power by ${deps.feedengine.name} ${deps.feedengine.version}`,
+          content: `${taskMeta.plugin.name} - Power by ${deps.feedengine.name} ${deps.feedengine.version}`,
           version: taskMeta.plugin.version,
         };
 
         // will be /api/atom/xxxx
         fastify.get(
-          `/atom/${taskMeta.plugin}${task.route}.atom`,
+          `/atom/${taskMeta.plugin.name}${task.route}.atom`,
           {
             schema: {
               querystring: querystringSchema,
@@ -82,18 +82,18 @@ export const plugin = definePlugin<true>((context, deps) => {
               );
 
               if (typeof atomFeed === 'string') {
-                return res.type('application/atom+xml').send(atomFeed);
+                return res.type('application/atom+xml; charset=utf-8').send(atomFeed);
               }
 
               if (!prod) {
                 isValidatedAtomFeed(atomFeed);
               }
 
-              if (atomFeed.generator) {
+              if (!atomFeed.generator) {
                 atomFeed.generator = generator;
               }
 
-              return res.type('application/atom+xml').send(buildAtomFeed(atomFeed));
+              return res.type('application/atom+xml; charset=utf-8').send(buildAtomFeed(atomFeed));
             } catch (error) {
               return res.code(500).send(error);
             } finally {

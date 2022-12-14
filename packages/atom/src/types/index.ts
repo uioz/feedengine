@@ -54,10 +54,10 @@ export interface AtomStdFilter {
 
 export interface AtomTask {
   route: string;
-  handler: <params, query>(
+  handler: <T extends AtomStdFilter>(
     context: AtomTaskContext,
-    params: params,
-    query: query
+    params: any,
+    query: T
   ) => Promise<string | AtomFeed>;
 }
 

@@ -1,51 +1,36 @@
 import {AtomEntry, AtomFeed, AtomStdFilter, AtomTextContent} from './types/index.js';
 import {create} from 'xmlbuilder2';
 
-const strOrArrStr = ['string', 'array'];
+const strOrArrStr = {
+  oneOf: [
+    {
+      type: 'string',
+    },
+    {
+      type: 'array',
+    },
+  ],
+};
 
 export const querystringSchema: {type: string; properties: Record<keyof AtomStdFilter, any>} = {
   type: 'object',
   properties: {
-    f: {
-      type: strOrArrStr,
-    },
-    fTitle: {
-      type: strOrArrStr,
-    },
-    fSummary: {
-      type: strOrArrStr,
-    },
-    fContent: {
-      type: strOrArrStr,
-    },
-    fAuthor: {
-      type: strOrArrStr,
-    },
-    fCategory: {
-      type: strOrArrStr,
-    },
+    f: strOrArrStr,
+    fTitle: strOrArrStr,
+    fSummary: strOrArrStr,
+    fContent: strOrArrStr,
+    fAuthor: strOrArrStr,
+    fCategory: strOrArrStr,
     fDate: {
       type: 'string',
       format: 'date-time',
     },
-    fo: {
-      type: strOrArrStr,
-    },
-    foTitle: {
-      type: strOrArrStr,
-    },
-    foSummary: {
-      type: strOrArrStr,
-    },
-    foContent: {
-      type: strOrArrStr,
-    },
-    foAuthor: {
-      type: strOrArrStr,
-    },
-    foCategory: {
-      type: strOrArrStr,
-    },
+    fo: strOrArrStr,
+    foTitle: strOrArrStr,
+    foSummary: strOrArrStr,
+    foContent: strOrArrStr,
+    foAuthor: strOrArrStr,
+    foCategory: strOrArrStr,
     foDate: {
       type: 'string',
       format: 'date-time',
@@ -100,17 +85,16 @@ export function transQueryToStdFilter(query: AtomStdFilter) {
 }
 
 function mustHaveAuthor(feed: Record<string, any>, haveEntry: boolean) {
-  if (feed.author?.name === undefined) {
+  if (!Array.isArray(feed.author) || feed.author.length === 0) {
     if (!haveEntry) {
       throw new Error('atom:feed elements MUST contain one or more atom:author elements');
     }
 
     for (const entry of feed.entry) {
-      if (typeof entry?.author?.name !== 'string') {
+      if (!Array.isArray(entry.author) || entry.author.length === 0)
         throw new Error(
           `atom:feed elements MUST contain one or more atom:author elements, unless all of the atom:feed element's child atom:entry elements contain at least one atom:author element.`
         );
-      }
     }
   }
 }
@@ -130,13 +114,13 @@ function mustHaveId(feed: Record<string, any>, haveEntry: boolean) {
 }
 
 function mustHaveTitle(feed: Record<string, any>, haveEntry: boolean) {
-  if (typeof feed.title !== 'string') {
+  if (typeof feed.title !== 'object') {
     throw new Error('atom:feed elements MUST contain exactly one atom:title element.');
   }
 
   if (haveEntry) {
     for (const entry of feed.entry) {
-      if (typeof entry.title !== 'string') {
+      if (typeof entry.title !== 'object') {
         throw new Error('atom:entry elements MUST contain exactly one atom:title element.');
       }
     }
@@ -202,7 +186,7 @@ function handleTextContent(doc: ReturnType<typeof create>, name: string, node: A
 }
 
 function isTextContent(data: Record<string, any>): data is AtomTextContent {
-  if (data.type === 'html' || data.type === 'text') {
+  if ((data.type === 'html' || data.type === 'text') && typeof data.src !== 'string') {
     return true;
   }
 
@@ -215,7 +199,7 @@ function handleAtomElement(doc: ReturnType<typeof create>, data: Partial<AtomFee
   }
 
   if (data.category) {
-    doc.ele('category', data.category);
+    doc.ele(data.category.map((item) => ({category: {...item}})));
   }
 
   if (data.contributor) {

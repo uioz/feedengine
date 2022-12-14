@@ -15,7 +15,7 @@ import {Sequelize} from 'sequelize';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
 import {Page} from 'puppeteer-core';
-import {PluginState, PluginWrap} from '../plugins/index.js';
+import {PluginWrap} from '../plugins/index.js';
 import {NotificationType} from '../message/index.js';
 
 interface TaskMeta {
@@ -288,8 +288,6 @@ export class TaskManager implements Closeable, Initable {
   registeredStdNames = new Map<string, Set<string>>();
   nonStdTaskTree = new Map<string, Set<NonStdTaskMeta>>();
   tasksModel: TopDeps['storageManager']['tasksModel'];
-  buffer: Array<[PluginWrap, string, unknown]> = [];
-  isReady = false;
   performance!: AppSettings['performance'];
   taskConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
   ioConcurrencyQueue!: queueAsPromised<() => Promise<void>>;
@@ -342,60 +340,40 @@ export class TaskManager implements Closeable, Initable {
     }
   }
 
-  active() {
-    this.isReady = true;
-
-    if (this.buffer.length) {
-      this.buffer.forEach((args) => this.register(...args));
-
-      this.buffer = [];
-    }
-  }
-
   register(plugin: PluginWrap, taskName: string, taskConstructor: unknown) {
-    if (this.isReady) {
-      if (this.deps.pluginManager.pluginStates.get(PluginState.actived)!.has(plugin.name)) {
-        if (isStandardTask(taskConstructor)) {
-          this.registeredStdTask.set(`${plugin.name}@${taskName}`, {
-            taskConstructor,
-            plugin,
-            taskName,
-            tasksInRunning: [],
-          });
+    if (isStandardTask(taskConstructor)) {
+      this.registeredStdTask.set(`${plugin.name}@${taskName}`, {
+        taskConstructor,
+        plugin,
+        taskName,
+        tasksInRunning: [],
+      });
 
-          const tasks = this.registeredStdNames.get(plugin.name);
+      const tasks = this.registeredStdNames.get(plugin.name);
 
-          if (tasks) {
-            tasks.add(taskName);
-          } else {
-            this.registeredStdNames.set(plugin.name, new Set([taskName]));
-          }
-        } else {
-          const nonStdTaskMeta = {
-            plugin,
-            taskName,
-            taskConstructor,
-          };
-
-          const result = this.nonStdTaskTree.get(taskName);
-
-          if (result) {
-            result.add(nonStdTaskMeta);
-          } else {
-            this.nonStdTaskTree.set(taskName, new Set([nonStdTaskMeta]));
-          }
-        }
+      if (tasks) {
+        tasks.add(taskName);
+      } else {
+        this.registeredStdNames.set(plugin.name, new Set([taskName]));
       }
     } else {
-      this.buffer.push([plugin, taskName, taskConstructor]);
+      const nonStdTaskMeta = {
+        plugin,
+        taskName,
+        taskConstructor,
+      };
+
+      const result = this.nonStdTaskTree.get(taskName);
+
+      if (result) {
+        result.add(nonStdTaskMeta);
+      } else {
+        this.nonStdTaskTree.set(taskName, new Set([nonStdTaskMeta]));
+      }
     }
   }
 
   unRegisterTaskByPlugin(pluginName: string) {
-    if (this.buffer.length) {
-      this.buffer = this.buffer.filter((item) => item[0].name !== pluginName);
-    }
-
     for (const [key, value] of this.registeredStdTask.entries()) {
       if (value.plugin.name === pluginName) {
         for (const task of value.tasksInRunning) {
