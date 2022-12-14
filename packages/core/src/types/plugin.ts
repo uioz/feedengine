@@ -40,7 +40,7 @@ export interface PluginRegisterContext {}
 export interface PluginContext extends Pick<Emitter<PluginSpaceEvent>, 'on' | 'off' | 'emit'> {
   rootDir: string;
   feedengineVersion: string;
-  currentPluginVerison: string;
+  verison: string;
   name: string;
   log: Logger;
   window: {

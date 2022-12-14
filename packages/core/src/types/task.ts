@@ -1,6 +1,12 @@
 import type {Logger} from 'pino';
 import type {Sequelize} from 'sequelize';
-import type {PluginContextStore, ConfimAction, TaskProgress, InjectionKey} from './index.js';
+import type {
+  PluginContextStore,
+  ConfimAction,
+  TaskProgress,
+  InjectionKey,
+  PluginContext,
+} from './index.js';
 import type {Page} from 'puppeteer-core';
 import {TaskState as TS} from '../task/index.js';
 
@@ -18,6 +24,7 @@ export interface TaskContext<T> {
   scheduleId: number;
   log: Logger;
   settings: T;
+  pluginSettings: PluginContext['settings'];
   sequelize: Sequelize;
   exit: () => void;
   page: {

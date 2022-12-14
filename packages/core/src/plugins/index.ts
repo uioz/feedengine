@@ -149,7 +149,7 @@ export class PluginWrap implements PluginOptions, Initable {
 
     this.context = {
       rootDir: this.deps.feedengine.rootDir,
-      currentPluginVerison: this.version,
+      verison: this.version,
       feedengineVersion: this.deps.feedengine.version,
       name: this.name,
       log: this.log,

@@ -25,8 +25,6 @@ export const plugin = definePlugin<true>((context, deps) => {
   const prod = deps.prod;
 
   context.register.fastifyPlugin(function (fastify, options, done) {
-    const settingManager = deps.settingManager;
-
     const driverManager = deps.driverManager;
 
     const sequelize = deps.storageManager.sequelize;
@@ -65,7 +63,7 @@ export const plugin = definePlugin<true>((context, deps) => {
                   inject: (key) => plugin.provideStore.get(key),
                   pluginName: plugin.name,
                   pluginVerison: plugin.version,
-                  pluginSettings: await settingManager.getPluginSettings(plugin.name),
+                  pluginSettings: plugin.context.settings,
                   requestPage: async () => {
                     if (pageRef !== undefined) {
                       throw new Error('');

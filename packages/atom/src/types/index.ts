@@ -7,7 +7,7 @@ import type {isValidatedAtomFeed, buildAtomFeed} from '../utils.js';
 export interface AtomTaskContext {
   pluginVerison: string;
   pluginName: string;
-  pluginSettings: any | null;
+  pluginSettings: PluginContext['settings'];
   inject: TaskContext<any>['inject'];
   sequelize: PluginContext['sequelize'];
   tool: PluginContext['tool'];

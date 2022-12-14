@@ -132,6 +132,7 @@ export class TaskWrap {
       scheduleId: this.scheduleId,
       log: this.log,
       settings: this.settings,
+      pluginSettings: this.taskMeta.plugin.context.settings,
       sequelize: this.deps.storageManager.sequelize,
       exit: () => {
         throw new ExitError();
