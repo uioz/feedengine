@@ -1,20 +1,23 @@
 export * from './types/index.js';
 import {definePlugin} from 'feedengine-plugin';
-import {AtomTask} from './types/index.js';
-import {querystringSchema, isValidatedAtomFeed} from './utils.js';
+import {AtomFeed, AtomTask} from './types/index.js';
+import {querystringSchema, isValidatedAtomFeed, buildAtomFeed} from './utils.js';
 
 export const plugin = definePlugin<true>((context, deps) => {
   const nonStdTaskTree = deps.taskManager.nonStdTaskTree;
 
-  const tasks = nonStdTaskTree.get('atom');
+  const atomTasks = nonStdTaskTree.get('atom');
 
   context.store.atom = {
     isValidatedAtomFeed,
+    buildAtomFeed,
   };
 
-  if (tasks === undefined || tasks.size === 0) {
+  if (atomTasks === undefined || atomTasks.size === 0) {
     return {};
   }
+
+  const prod = deps.prod;
 
   context.register.fastifyPlugin(function (fastify, options, done) {
     const settingManager = deps.settingManager;
@@ -23,13 +26,18 @@ export const plugin = definePlugin<true>((context, deps) => {
 
     const sequelize = deps.storageManager.sequelize;
 
-    for (const taskMeta of tasks.values()) {
+    for (const taskMeta of atomTasks.values()) {
       for (const task of taskMeta.taskConstructor as Array<AtomTask>) {
         const plugin = taskMeta.plugin;
 
+        const generator = {
+          content: `${taskMeta.plugin} - Power by ${deps.feedengine.name} ${deps.feedengine.version}`,
+          version: taskMeta.plugin.version,
+        };
+
         // will be /api/atom/xxxx
         fastify.get(
-          `/atom/${taskMeta.plugin}${task.route}`,
+          `/atom/${taskMeta.plugin}${task.route}.atom`,
           {
             schema: {
               querystring: querystringSchema,
@@ -43,7 +51,7 @@ export const plugin = definePlugin<true>((context, deps) => {
             let pageRef: any;
 
             try {
-              const result = await task.handler(
+              const atomFeed: string | AtomFeed = await task.handler(
                 {
                   inject: (key) => plugin.provideStore.get(key),
                   pluginName: plugin.name,
@@ -66,20 +74,19 @@ export const plugin = definePlugin<true>((context, deps) => {
                 req.query as any
               );
 
-              if (typeof result === 'string') {
-                return res.send(result);
+              if (typeof atomFeed === 'string') {
+                return res.type('application/atom+xml').send(atomFeed);
               }
 
-              if (Array.isArray(result)) {
-                // wrap
-                return res.send(result);
+              if (!prod) {
+                isValidatedAtomFeed(atomFeed);
               }
 
-              if (isValidatedAtomFeed(result)) {
-                return res.send(result);
+              if (atomFeed.generator) {
+                atomFeed.generator = generator;
               }
 
-              return res.code(500).send('feed provided by plugin is invalid');
+              return res.type('application/atom+xml').send(buildAtomFeed(atomFeed));
             } catch (error) {
               return res.code(500).send(error);
             } finally {

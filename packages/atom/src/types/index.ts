@@ -2,7 +2,7 @@
 // http://www.atomenabled.org/developers/syndication
 // https://datatracker.ietf.org/doc/html/rfc4287
 import type {PluginContextStore, PluginContext, TaskContext} from 'feedengine';
-import type {isValidatedAtomFeed} from '../utils.js';
+import type {isValidatedAtomFeed, buildAtomFeed} from '../utils.js';
 
 export interface AtomTaskContext {
   pluginVerison: string;
@@ -54,7 +54,7 @@ export interface AtomTask {
     context: AtomTaskContext,
     params: params,
     query: query
-  ) => Promise<string | AtomFeed | Array<AtomEntry>>;
+  ) => Promise<string | AtomFeed>;
 }
 
 declare module 'feedengine' {
@@ -65,6 +65,7 @@ declare module 'feedengine' {
   interface PluginContextStore {
     atom: {
       isValidatedAtomFeed: typeof isValidatedAtomFeed;
+      buildAtomFeed: typeof buildAtomFeed;
     };
   }
 }
@@ -110,17 +111,13 @@ export interface AtomTextContent {
 
 type mimeType = string;
 
-export type AtomMediaContent =
-  | {
-      type: mimeType;
-      src: string;
-    }
-  | {
-      type: mimeType;
-      content: string;
-    };
+export type AtomMediaContent = {
+  type?: mimeType;
+  src?: string;
+  content?: string;
+};
 
-export type AtomContent = AtomTextContent | AtomMediaContent;
+export type AtomContent = AtomMediaContent | AtomTextContent;
 
 export type AtomPublished = Date;
 
@@ -137,7 +134,7 @@ export type AtomUpdated = Date;
 export type AtomId = string;
 
 export interface AtomEntry {
-  author: Array<AtomAuthor>;
+  author?: Array<AtomAuthor>;
   category?: Array<AtomCategory>;
   content?: AtomContent;
   contributor?: Array<AtomContributor>;
@@ -173,4 +170,5 @@ export interface AtomFeed {
   subtitle?: AtomSubtitle;
   title: AtomTitle;
   updated: AtomUpdated;
+  entry: Array<AtomEntry>;
 }
