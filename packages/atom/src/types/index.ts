@@ -15,37 +15,41 @@ export interface AtomTaskContext {
   store: PluginContextStore;
 }
 
-type StrOrArrStr = string | Array<string>;
-
 export interface AtomStdFilter {
   /**
    * filter
    * apply to title summary context
    */
-  f?: StrOrArrStr;
-  fTitle?: StrOrArrStr;
-  fSummary?: StrOrArrStr;
-  fContext?: StrOrArrStr;
-  fAuthor?: StrOrArrStr;
-  fCategory?: StrOrArrStr;
-  fDate?: string;
+  f?: Array<string>;
+  fTitle?: Array<string>;
+  fSummary?: Array<string>;
+  fContent?: Array<string>;
+  fAuthor?: Array<string>;
+  fCategory?: Array<string>;
+  fDate?: Date;
 
   /**
    * filter out
    */
-  fo?: StrOrArrStr;
-  foTitle?: StrOrArrStr;
-  foSummary?: StrOrArrStr;
-  foContext?: StrOrArrStr;
-  foAuthor?: StrOrArrStr;
-  foCategory?: StrOrArrStr;
-  foDate?: string;
+  fo?: Array<string>;
+  foTitle?: Array<string>;
+  foSummary?: Array<string>;
+  foContent?: Array<string>;
+  foAuthor?: Array<string>;
+  foCategory?: Array<string>;
+  foDate?: Date;
 
-  limit?: string;
+  limit?: number;
 
-  sorted?: string;
+  /**
+   * @default true
+   */
+  sorted?: boolean;
 
-  cache?: string;
+  /**
+   * @default false
+   */
+  cache?: boolean;
 }
 
 export interface AtomTask {

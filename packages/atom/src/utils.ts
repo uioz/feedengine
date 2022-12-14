@@ -15,7 +15,7 @@ export const querystringSchema: {type: string; properties: Record<keyof AtomStdF
     fSummary: {
       type: strOrArrStr,
     },
-    fContext: {
+    fContent: {
       type: strOrArrStr,
     },
     fAuthor: {
@@ -26,6 +26,7 @@ export const querystringSchema: {type: string; properties: Record<keyof AtomStdF
     },
     fDate: {
       type: 'string',
+      format: 'date-time',
     },
     fo: {
       type: strOrArrStr,
@@ -36,7 +37,7 @@ export const querystringSchema: {type: string; properties: Record<keyof AtomStdF
     foSummary: {
       type: strOrArrStr,
     },
-    foContext: {
+    foContent: {
       type: strOrArrStr,
     },
     foAuthor: {
@@ -46,19 +47,57 @@ export const querystringSchema: {type: string; properties: Record<keyof AtomStdF
       type: strOrArrStr,
     },
     foDate: {
-      type: strOrArrStr,
+      type: 'string',
+      format: 'date-time',
     },
     limit: {
       type: 'string',
+      pattern: `^\\d+$`,
     },
     sorted: {
       type: 'string',
+      pattern: `^(true|false)$`,
     },
     cache: {
       type: 'string',
+      pattern: `^(true|false)$`,
     },
   },
 };
+
+export function transQueryToStdFilter(query: AtomStdFilter) {
+  for (const key of Object.keys(query) as Array<keyof AtomStdFilter>) {
+    switch (key) {
+      case 'f':
+      case 'fTitle':
+      case 'fSummary':
+      case 'fContent':
+      case 'fAuthor':
+      case 'fCategory':
+      case 'fo':
+      case 'foTitle':
+      case 'foSummary':
+      case 'foContent':
+      case 'foAuthor':
+      case 'foCategory':
+        if (!Array.isArray(query[key])) {
+          query[key] = [query[key] as any];
+        }
+        break;
+      case 'fDate':
+      case 'foDate':
+        query[key] = new Date(query[key]!);
+        break;
+      case 'sorted':
+      case 'cache':
+        query[key] = !!query[key];
+        break;
+      case 'limit':
+        query[key] = parseInt(query[key] as any);
+        break;
+    }
+  }
+}
 
 function mustHaveAuthor(feed: Record<string, any>, haveEntry: boolean) {
   if (feed.author?.name === undefined) {
@@ -111,7 +150,7 @@ function mustHaveUpdated(feed: Record<string, any>, haveEntry: boolean) {
 
   if (haveEntry) {
     for (const entry of feed.entry) {
-      if (typeof entry.updated !== 'string') {
+      if (typeof entry.updated !== 'object') {
         throw new Error('atom:entry elements MUST contain exactly one atom:updated element.');
       }
     }

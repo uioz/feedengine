@@ -1,7 +1,12 @@
 export * from './types/index.js';
 import {definePlugin} from 'feedengine-plugin';
-import {AtomFeed, AtomTask} from './types/index.js';
-import {querystringSchema, isValidatedAtomFeed, buildAtomFeed} from './utils.js';
+import {AtomFeed, AtomStdFilter, AtomTask} from './types/index.js';
+import {
+  querystringSchema,
+  isValidatedAtomFeed,
+  buildAtomFeed,
+  transQueryToStdFilter,
+} from './utils.js';
 
 export const plugin = definePlugin<true>((context, deps) => {
   const nonStdTaskTree = deps.taskManager.nonStdTaskTree;
@@ -42,6 +47,10 @@ export const plugin = definePlugin<true>((context, deps) => {
             schema: {
               querystring: querystringSchema,
             },
+            preHandler: (req, res, done) => {
+              transQueryToStdFilter(req.query as AtomStdFilter);
+              done();
+            },
           },
           async (req, res) => {
             if (plugin.state !== 3) {
@@ -71,7 +80,7 @@ export const plugin = definePlugin<true>((context, deps) => {
                   tool: context.tool,
                 },
                 req.params,
-                req.query as any
+                req.query as AtomStdFilter
               );
 
               if (typeof atomFeed === 'string') {
