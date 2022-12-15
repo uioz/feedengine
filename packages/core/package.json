@@ -19,6 +19,7 @@
     "@fastify/static": "^6.6.0",
     "@fastify/websocket": "^7.1.1",
     "awilix": "^8.0.0",
+    "dayjs": "^1.11.7",
     "desm": "^1.3.0",
     "fastify": "^4.10.2",
     "fastq": "^1.14.0",
@@ -30,11 +31,11 @@
     "mitt": "^3.0.0",
     "node-schedule": "^2.1.0",
     "pino": "^8.7.0",
-    "puppeteer-core": "^19.3.0",
+    "puppeteer-core": "^19.4.0",
     "puppeteer-extra": "^3.3.4",
     "puppeteer-extra-plugin-stealth": "^2.11.1",
-    "sequelize": "^6.26.0",
-    "sqlite3": "^5.1.2",
+    "sequelize": "^6.27.0",
+    "sqlite3": "^5.1.4",
     "tough-cookie": "^4.1.2"
   },
   "devDependencies": {
