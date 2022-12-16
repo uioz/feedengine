@@ -38,7 +38,7 @@ export const plugin = definePlugin<true>((context, deps) => {
           version: taskMeta.plugin.version,
         };
 
-        // will be /api/atom/xxxx
+        // will be /api/atom/xxxx.atom
         fastify.get(
           `/atom/${taskMeta.plugin.name}${task.route}.atom`,
           {

@@ -155,12 +155,12 @@ export class PluginWrap implements PluginOptions, Initable {
       log: this.log,
       window: {
         confirm: {
-          warn: co(NotificationType.warn),
+          warn: co(NotificationType.warning),
           error: co(NotificationType.error),
           info: co(NotificationType.info),
         },
         notification: {
-          warn: no(NotificationType.warn),
+          warn: no(NotificationType.warning),
           error: no(NotificationType.error),
           info: no(NotificationType.info),
         },

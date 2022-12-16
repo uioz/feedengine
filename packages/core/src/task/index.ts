@@ -73,8 +73,9 @@ export class TaskWrap {
     private taskMeta: TaskMeta,
     private settings: unknown
   ) {
-    this.progress = this.deps.messageManager.progress('TaskProgress', taskMeta.taskName);
+    this.progress = this.deps.messageManager.progress('TaskProgress', taskId);
     this.progress.send({
+      scheduleId,
       state: 'pending',
     });
     taskMeta.tasksInRunning.push(this);
@@ -103,6 +104,7 @@ export class TaskWrap {
     this.#state = v;
     this.taskRef.state = v;
     this.progress.send({
+      scheduleId: this.scheduleId,
       state: TaskState[v] as any,
     });
     this.log.info(`state ${TaskState[v]}`);
@@ -139,18 +141,21 @@ export class TaskWrap {
       },
       window: {
         confirm: {
-          warn: co(NotificationType.warn),
+          warn: co(NotificationType.warning),
           error: co(NotificationType.error),
           info: co(NotificationType.info),
         },
         notification: {
-          warn: no(NotificationType.warn),
+          warn: no(NotificationType.warning),
           error: no(NotificationType.error),
           info: no(NotificationType.info),
         },
         progress: (options) => {
           checkIsStillRunning();
-          this.progress.send(options);
+          this.progress.send({
+            scheduleId: this.scheduleId,
+            ...options,
+          });
         },
       },
       ioQueue: ((arg: any) => {
@@ -417,18 +422,34 @@ export class TaskManager implements Closeable, Initable {
       group: ['plugin', 'task'],
     });
 
-    const temp: Record<string, Array<{task: string; taskCount: number; working: number}>> = {};
+    const temp: Record<
+      string,
+      Array<{
+        task: string;
+        taskCount: number;
+        running: Array<{state: TaskState; taskId: number; scheduleId: number}>;
+      }>
+    > = {};
 
     for (const {plugin, task, taskCount} of data) {
       if (this.registeredStdNames.get(plugin)?.has(task)) {
+        const res = {
+          task,
+          taskCount,
+          running:
+            this.registeredStdTask
+              .get(`${plugin}@${task}`)
+              ?.tasksInRunning.map(({state, taskId, scheduleId}) => ({
+                state,
+                taskId,
+                scheduleId,
+              })) ?? [],
+        };
+
         if (temp[plugin]) {
-          temp[plugin].push({
-            task,
-            taskCount,
-            working: this.registeredStdTask.get(`${plugin}@${task}`)?.tasksInRunning.length ?? 0,
-          });
+          temp[plugin].push(res);
         } else {
-          temp[plugin] = [{task, taskCount, working: 0}];
+          temp[plugin] = [res];
         }
       }
     }
@@ -443,11 +464,10 @@ export class TaskManager implements Closeable, Initable {
     for (const {
       plugin,
       taskName,
-      taskConstructor: {setup, description, link},
+      taskConstructor: {description, link},
     } of this.registeredStdTask.values()) {
       const temp = {
         taskName,
-        setup: !!setup,
         description,
         link,
         instances: [],

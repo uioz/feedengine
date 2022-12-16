@@ -15,6 +15,23 @@
         </VBtn>
       </template>
     </VToolbar>
+    <VExpansionPanels variant="accordion">
+      <VExpansionPanel>
+        <VExpansionPanelTitle>
+          <VChip color="primary"
+            ><VIcon start icon="app_registration"></VIcon>{{ taskCount }}</VChip
+          >
+          <VChip class="ml-2" color="pink"
+            ><VIcon start icon="send"></VIcon>{{ taskInRunningCount }}</VChip
+          >
+        </VExpansionPanelTitle>
+        <VExpansionPanelText>
+          Lorem ipsum dolor, sit amet consectetur adipisicing elit. Voluptates eius reiciendis eaque
+          explicabo maxime quasi aspernatur alias nemo, aperiam voluptatibus, ad at, placeat harum
+          obcaecati. Eaque harum vitae quam molestias.
+        </VExpansionPanelText>
+      </VExpansionPanel>
+    </VExpansionPanels>
     <v-progress-linear
       :active="state !== 'actived'"
       color="success"
@@ -24,12 +41,20 @@
 </template>
 
 <script setup lang="ts">
-import type {LivingApi} from 'feedengine';
+import type {LivingRes} from 'feedengine';
+import {computed} from 'vue';
 
-defineProps<{
-  name: LivingApi['name'];
-  version: LivingApi['version'];
-  state: LivingApi['state'];
-  app?: LivingApi['app'];
+const props = defineProps<{
+  name: LivingRes['name'];
+  version: LivingRes['version'];
+  state: LivingRes['state'];
+  task: LivingRes['task'];
+  app?: LivingRes['app'];
 }>();
+
+const taskCount = computed(() => props.task.length);
+
+const taskInRunningCount = computed(() =>
+  props.task.map((item) => item.running.length).reduce((prev, next) => prev + next, 0)
+);
 </script>

@@ -6,10 +6,7 @@
     <VExpansionPanels variant="accordion" multiple>
       <VExpansionPanel v-for="item of tasks" :key="item.taskName">
         <VExpansionPanelTitle>
-          {{ item.taskName
-          }}<VChip class="rounded-pill ml-2" size="x-small">{{
-            item.setup ? '可创建' : '不可创建'
-          }}</VChip>
+          {{ item.taskName }}
           <template v-if="item.link">
             <VBtn
               v-if="item.link?.startsWith('/') === false"
@@ -59,7 +56,6 @@ defineProps<{
   pluginName: string;
   tasks: {
     taskName: string;
-    setup: boolean;
     description?: string | undefined;
     link?: string | undefined;
     instances: {

@@ -11,7 +11,7 @@ import {
 } from '../types/message.js';
 
 export enum NotificationType {
-  'warn' = 'warn',
+  'warning' = 'warning',
   'error' = 'error',
   'info' = 'info',
 }
@@ -141,15 +141,13 @@ export class MessageManager implements Closeable {
       this.push({
         channel: 'notification',
         source,
-        payload: {
-          type,
-          message,
-        },
+        type,
+        message,
       } as NotificationMessage);
     };
 
     return {
-      warn: handler(NotificationType.warn),
+      warning: handler(NotificationType.warning),
       error: handler(NotificationType.error),
       info: handler(NotificationType.info),
     };
@@ -160,27 +158,28 @@ export class MessageManager implements Closeable {
       (type: NotificationType) =>
       (message: string, actions: Array<ConfimAction> = []) => {
         this.push({
-          channel: 'notification',
+          channel: 'confirm',
           consumable: true,
           consumed: false,
           id: `${this.id++}`,
           source,
-          payload: {
-            type,
-            message,
-            actions,
-          },
+          type,
+          message,
+          actions,
         } as ConfirmMessage);
       };
 
     return {
-      warn: handler(NotificationType.warn),
+      warning: handler(NotificationType.warning),
       error: handler(NotificationType.error),
       info: handler(NotificationType.info),
     };
   }
 
-  progress<T extends ProgressMessage>(channel: T['channel'], source: string): ProgressHandler<T> {
+  progress<T extends ProgressMessage>(
+    channel: T['channel'],
+    source: string | number
+  ): ProgressHandler<T> {
     let open = true;
 
     const handler: ProgressHandler<T> = {

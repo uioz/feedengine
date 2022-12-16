@@ -19,10 +19,8 @@ export interface ConfimAction {
 }
 
 export interface Notification {
-  payload: {
-    type: NotificationType;
-    message: string;
-  };
+  type: keyof typeof NotificationType;
+  message: string;
 }
 
 export interface NotificationMessage extends Notification, MessageBase {
@@ -31,23 +29,25 @@ export interface NotificationMessage extends Notification, MessageBase {
 }
 
 export interface ConfirmMessage extends Notification, MessageConsumable {
-  channel: 'notification';
+  channel: 'confirm';
   source: string;
-  payload: Notification['payload'] & {actions: Array<ConfimAction>};
+  actions: Array<ConfimAction>;
 }
 
 export interface ProgressMessage extends MessageBase {
-  source: string;
   progress?: number;
   message?: string;
 }
 
 export interface PluginProgress extends ProgressMessage {
+  source: string;
   channel: 'PluginProgress';
   state: PluginState;
 }
 
 export interface TaskProgress extends ProgressMessage {
+  source: number;
+  scheduleId: number;
   channel: 'TaskProgress';
   state: TaskState;
 }

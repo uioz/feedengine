@@ -9,7 +9,11 @@ export interface LivingRes {
   task: Array<{
     task: string;
     taskCount: number;
-    working: number;
+    running: Array<{
+      state: TaskState;
+      taskId: number;
+      scheduleId: number;
+    }>;
   }>;
   app?: {
     url: string;
@@ -21,7 +25,6 @@ export type TasksRes = Record<
   string,
   Array<{
     taskName: string;
-    setup: boolean;
     description?: string;
     link?: string;
     instances: Array<{
