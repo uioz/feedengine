@@ -33,20 +33,7 @@ export const useMessageStore = defineStore('message', {
     eventBus: mitt<MessageEventType>(),
     socket: undefined,
     confirmSet: new Set(),
-    notificationSet: new Set([
-      {
-        source: 'hello',
-        channel: 'notification',
-        message: 'hello world',
-        type: 'error',
-      },
-      {
-        source: 'world',
-        channel: 'notification',
-        message: 'hello world',
-        type: 'error',
-      },
-    ]),
+    notificationSet: new Set(),
   }),
   actions: {
     connect() {

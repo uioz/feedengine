@@ -42,7 +42,7 @@ const props = defineProps<{
   type: ScheduleType;
 }>();
 
-const data = computed(() => (scheduleStore as any)[props.type] as ScheduleRes);
+const data = computed(() => (scheduleStore as any)[ScheduleType[props.type]] as ScheduleRes);
 
 async function handleManualExec(id: number) {
   await useRequest(`/schedule/${id}/exec`);

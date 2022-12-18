@@ -7,7 +7,6 @@ import dayjs from 'dayjs';
 
 export enum ScheduleType {
   core,
-  other,
   startup,
   interval,
   manual,

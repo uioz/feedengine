@@ -1,5 +1,5 @@
 import {useAppStore} from '@/stores/app';
-import {ref, watch} from 'vue';
+import {computed, ref, watch} from 'vue';
 import {useRequest} from '@/utils/request';
 import type {ConfimAction} from 'feedengine';
 import {useMessageStore} from '@/stores/message';
@@ -39,6 +39,7 @@ export function useGlobalNotification() {
   const {notificationSet} = useMessageStore();
 
   return {
+    showNotification: computed(() => notificationSet.size > 0),
     notificationSet,
     showMenu: ref(false),
     clearAllNotification() {

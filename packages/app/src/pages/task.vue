@@ -8,10 +8,10 @@
   </VContainer>
 </template>
 <script setup lang="ts">
-import type {TasksRes} from 'feedengine';
+import type {GroupedTasksRes} from 'feedengine';
 import TaskCard from '@/components/task/TaskCard.vue';
 
 import {useRequest} from '@/utils/request';
 
-const {data} = useRequest('/tasks').json<TasksRes>();
+const {data} = useRequest('/grouped-tasks').json<GroupedTasksRes>();
 </script>

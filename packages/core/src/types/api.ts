@@ -21,7 +21,7 @@ export interface LivingRes {
   };
 }
 
-export type TasksRes = Record<
+export type GroupedTasksRes = Record<
   string,
   Array<{
     taskName: string;
@@ -35,6 +35,16 @@ export type TasksRes = Record<
     }>;
   }>
 >;
+
+export type TasksRes = Array<{
+  id: number;
+  plugin: string;
+  task: string;
+  name: string | null;
+  settings: any | null;
+  createdAt: Date;
+  updatedAt: Date;
+}>;
 
 export interface Schedule {
   id: number;

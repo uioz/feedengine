@@ -5,10 +5,11 @@ import type {
   AppSettings,
   Initable,
   Task,
-  TasksRes,
+  GroupedTasksRes,
   ProgressHandler,
   TaskProgress,
   InjectionKey,
+  TasksRes,
 } from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import {Sequelize} from 'sequelize';
@@ -457,9 +458,21 @@ export class TaskManager implements Closeable, Initable {
     return temp;
   }
 
+  async listAvailableUserTasks(): Promise<TasksRes> {
+    const tasks = await this.tasksModel.findAll({
+      where: {
+        plugin: [...this.registeredStdNames.keys()],
+        task: [...this.registeredStdNames.values()].map((set) => [...set]).flat(),
+      },
+      raw: true,
+    });
+
+    return tasks.filter(({plugin, task}) => this.registeredStdNames.get(plugin)?.has(task));
+  }
+
   // for GET /tasks
   async getAllRegisterTaskGroupByPlugin() {
-    const data: TasksRes = {};
+    const data: GroupedTasksRes = {};
 
     for (const {
       plugin,
@@ -480,22 +493,20 @@ export class TaskManager implements Closeable, Initable {
       }
     }
 
-    const tasks = await this.tasksModel.findAll({
-      where: {
-        plugin: [...this.registeredStdNames.keys()],
-        task: [...this.registeredStdNames.values()].map((set) => [...set]).flat(),
-      },
-    });
-
-    for (const {plugin, task, name, id, settings, createdAt} of tasks) {
-      if (this.registeredStdNames.get(plugin)?.has(task)) {
-        data[plugin]!.find(({taskName}) => taskName === task)!.instances.push({
-          name,
-          id,
-          settings,
-          createdAt,
-        });
-      }
+    for (const {
+      plugin,
+      task,
+      name,
+      id,
+      settings,
+      createdAt,
+    } of await this.listAvailableUserTasks()) {
+      data[plugin]!.find(({taskName}) => taskName === task)!.instances.push({
+        name,
+        id,
+        settings,
+        createdAt,
+      });
     }
 
     return data;

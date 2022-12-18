@@ -5,7 +5,7 @@
       <template #append>
         <VMenu v-model="showMenu" :close-on-content-click="false">
           <template #activator="{props}">
-            <VBtn v-bind="props" icon>
+            <VBtn v-bind="props" icon v-show="showNotification">
               <VBadge color="error" dot><VIcon icon="notifications"></VIcon></VBadge>
             </VBtn>
           </template>
@@ -98,5 +98,5 @@ const links = [
 
 const {consumeMesssage, handleActions, showSnackbar, message} = useGlobalConfirm();
 
-const {notificationSet, showMenu, clearAllNotification} = useGlobalNotification();
+const {notificationSet, showMenu, clearAllNotification, showNotification} = useGlobalNotification();
 </script>

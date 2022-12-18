@@ -28,7 +28,6 @@
                 <th class="text-left">id</th>
                 <th class="text-left">名称</th>
                 <th class="text-left">创建日期</th>
-                <th class="text-left">设置</th>
                 <th class="text-left">操作</th>
               </tr>
             </thead>
@@ -37,7 +36,6 @@
                 <td>{{ instance.id }}</td>
                 <td>{{ instance.name }}</td>
                 <td>{{ instance.createdAt }}</td>
-                <td>{{ instance.settings }}</td>
                 <td>
                   <VBtn size="small" rounded="lg" variant="text" icon="edit"></VBtn>
                   <VBtn size="small" rounded="lg" variant="text" icon="delete"></VBtn>
