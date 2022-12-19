@@ -47,5 +47,13 @@ export const useScheduleStore = defineStore('schedule', {
         }
       }
     },
+    async remove(scheduleId: number, type: ScheduleType) {
+      const ref = (this as any)[ScheduleType[type]] as ScheduleRes;
+
+      ref.splice(
+        ref.findIndex((item) => item.id === scheduleId),
+        1
+      );
+    },
   },
 });

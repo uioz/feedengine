@@ -60,7 +60,7 @@
         <VCardActions>
           <template v-if="showIntervalForm">
             <VBtn class="ml-auto" color="secondary" @click="exitIntervalForm">取消</VBtn>
-            <VBtn color="primary" @click="submit">确认</VBtn>
+            <VBtn color="primary" @click="submit()">确认</VBtn>
           </template>
           <VBtn v-else class="ml-auto" color="primary" @click="showDialog = false">关闭</VBtn>
         </VCardActions>
@@ -71,6 +71,8 @@
 <script setup lang="ts">
 import {useScheduleStore, ScheduleType} from '@/stores/schedule';
 import ManualTable from '@/components/schedule/ManualTable.vue';
+import IntervalTable from '@/components/schedule/IntervalTable.vue';
+import StartupTable from '@/components/schedule/StartupTable.vue';
 import {useDialog} from './schedule';
 
 const ScheduleStore = useScheduleStore();
@@ -92,12 +94,12 @@ const list = [
   },
   {
     type: ScheduleType.interval,
-    component: ManualTable,
+    component: IntervalTable,
     label: labelMap[ScheduleType.interval],
   },
   {
     type: ScheduleType.startup,
-    component: ManualTable,
+    component: StartupTable,
     label: labelMap[ScheduleType.startup],
   },
 ] as const;

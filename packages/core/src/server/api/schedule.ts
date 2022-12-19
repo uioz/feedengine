@@ -21,6 +21,14 @@ export const scheduleRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
     await scheduleManager.scheduleManualTask(parseInt(req.params.id));
   });
 
+  fastify.delete<{
+    Params: {
+      id: string;
+    };
+  }>('/schedule/:id', async (req) => {
+    await scheduleManager.deleteSchedule(parseInt(req.params.id));
+  });
+
   fastify.put<{
     Body: {
       taskId: number;

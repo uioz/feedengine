@@ -66,8 +66,8 @@ export class ScheduleManager implements Closeable {
       case ScheduleType.startup:
         this.refs.set(scheduleId, {
           taskRef: create
-            ? this.taskManager.execTask(taskId, scheduleId).onSuccess(this.taskSuccessCallback)
-            : undefined,
+            ? undefined
+            : this.taskManager.execTask(taskId, scheduleId).onSuccess(this.taskSuccessCallback),
           taskId,
         });
         break;
@@ -92,14 +92,12 @@ export class ScheduleManager implements Closeable {
           });
         });
 
-        if (dayjs(lastRun).add(parseInt(day), 'day').isSame(dayjs(), 'date')) {
-          this.refs.set(scheduleId, {
-            taskRef: this.taskManager
-              .execTask(taskId, scheduleId)
-              .onSuccess(this.taskSuccessCallback),
-            taskId,
-          });
-        }
+        this.refs.set(scheduleId, {
+          taskRef: dayjs(lastRun).add(parseInt(day), 'day').isSame(dayjs(), 'date')
+            ? this.taskManager.execTask(taskId, scheduleId).onSuccess(this.taskSuccessCallback)
+            : undefined,
+          taskId,
+        });
 
         break;
       }

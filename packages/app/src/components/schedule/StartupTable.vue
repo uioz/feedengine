@@ -1,5 +1,5 @@
 <template>
-  <VTable v-if="scheduleStore.manual.length">
+  <VTable v-if="scheduleStore.startup.length">
     <thead>
       <tr>
         <th class="text-left">名称</th>
@@ -10,15 +10,15 @@
       </tr>
     </thead>
     <tbody>
-      <tr v-for="item in scheduleStore.manual" :key="item.id">
-        <ManualTableRow v-bind="item"></ManualTableRow>
+      <tr v-for="item in scheduleStore.startup" :key="item.id">
+        <StartupTableRow v-bind="item"></StartupTableRow>
       </tr>
     </tbody>
   </VTable>
 </template>
 <script setup lang="ts">
 import {useScheduleStore} from '@/stores/schedule';
-import ManualTableRow from './ManualTableRow.vue';
+import StartupTableRow from './StartupTableRow.vue';
 
 const scheduleStore = useScheduleStore();
 </script>
