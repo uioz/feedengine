@@ -33,11 +33,11 @@ interface NonStdTaskMeta {
 }
 
 export interface TaskRef {
-  _successCb?: (taskId: number) => void;
+  _successCb?: (scheduleId: number) => void;
   _destroyCb?: () => void;
   taskId: number;
   state: TaskState;
-  onSuccess(cb: (taskId: number) => void): TaskRef;
+  onSuccess(cb: (scheduleId: number) => void): TaskRef;
   destroy(): void;
 }
 
@@ -228,7 +228,7 @@ export class TaskWrap {
 
     try {
       await this.task.run();
-      this.taskRef._successCb?.(this.taskId);
+      this.taskRef._successCb?.(this.scheduleId);
       this.destroy();
     } catch (error) {
       this.errorHandler(error);

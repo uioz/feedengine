@@ -322,7 +322,7 @@ export class PluginWrap implements PluginOptions, Initable {
                 return reject(new Error(`There's no plugin called ${targetName}`));
               }
               if (hook.pluginStates.get(PluginState.error)!.has(targetName)) {
-                return reject(new Error(`loading plugin ${targetName} was failed`));
+                return reject(new Error(`loading plugin ${targetName} failed`));
               }
               if (!hook.pluginStates.get(PluginState.created)!.has(targetName)) {
                 namesThatNeedToWatch.add(targetName);

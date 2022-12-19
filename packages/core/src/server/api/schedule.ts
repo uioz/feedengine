@@ -1,5 +1,6 @@
 import type {FastifyPluginCallback} from 'fastify';
-import {TopDeps, ScheduleRes} from '../../index.js';
+import {TopDeps, ScheduleRes, SchedulePutRes} from '../../index.js';
+import {ScheduleType} from '../../schedule/index.js';
 
 export const scheduleRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
   fastify,
@@ -18,6 +19,26 @@ export const scheduleRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
     };
   }>('/schedule/:id/exec', async (req) => {
     await scheduleManager.scheduleManualTask(parseInt(req.params.id));
+  });
+
+  fastify.put<{
+    Body: {
+      taskId: number;
+      type: ScheduleType;
+      trigger: string;
+    };
+    Reply: SchedulePutRes;
+  }>('/schedule', async (req, res) => {
+    const {taskId, trigger, type} = req.body;
+
+    const scheduleId = await scheduleManager.createSchedule(taskId, {
+      type,
+      trigger,
+    });
+
+    res.send({
+      scheduleId,
+    });
   });
 
   done();

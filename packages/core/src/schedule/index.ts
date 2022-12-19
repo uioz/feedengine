@@ -44,8 +44,8 @@ export class ScheduleManager implements Closeable {
     this.pluginManager = pluginManager;
   }
 
-  private taskSuccessCallback = (taskId: number) => {
-    this.updateLastRunTime(taskId, new Date());
+  private taskSuccessCallback = (scheduleId: number) => {
+    this.updateLastRunTime(scheduleId, new Date());
   };
 
   private scheduleTask(
@@ -53,7 +53,8 @@ export class ScheduleManager implements Closeable {
     scheduleId: number,
     trigger: string | null,
     type: number,
-    taskId: number
+    taskId: number,
+    create = false
   ) {
     const matchsDay = /^d(\d+)/;
     switch (type) {
@@ -64,9 +65,9 @@ export class ScheduleManager implements Closeable {
         break;
       case ScheduleType.startup:
         this.refs.set(scheduleId, {
-          taskRef: this.taskManager
-            .execTask(taskId, scheduleId)
-            .onSuccess(this.taskSuccessCallback),
+          taskRef: create
+            ? this.taskManager.execTask(taskId, scheduleId).onSuccess(this.taskSuccessCallback)
+            : undefined,
           taskId,
         });
         break;
@@ -196,7 +197,7 @@ export class ScheduleManager implements Closeable {
       lastRun: state.type === ScheduleType.interval ? new Date() : undefined,
     });
 
-    this.scheduleTask(lastRun, id, trigger, type, taskId);
+    this.scheduleTask(lastRun, id, trigger, type, taskId, true);
 
     return id;
   }
@@ -276,7 +277,7 @@ export class ScheduleManager implements Closeable {
     }
 
     scheduleRef.taskRef = this.taskManager
-      .execTask(result.TaskId, this.scheduleId--)
+      .execTask(result.TaskId, result.id)
       .onSuccess(this.taskSuccessCallback);
   }
 

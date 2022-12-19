@@ -60,3 +60,7 @@ export interface Schedule {
 }
 
 export type ScheduleRes = Array<Schedule>;
+
+export type SchedulePutRes = {
+  scheduleId: number;
+};

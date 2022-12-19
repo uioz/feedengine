@@ -2,6 +2,7 @@ import {computed, ref, watch} from 'vue';
 import {ScheduleType} from '@/stores/schedule';
 import {useRequest} from '@/utils/request';
 import type {TasksRes} from 'feedengine';
+import {useScheduleStore} from '@/stores/schedule';
 
 export function useDialog() {
   const showDialog = ref(false);
@@ -29,6 +30,8 @@ export function useDialog() {
       exitIntervalForm();
     }
   });
+
+  const ScheduleStore = useScheduleStore();
 
   return {
     loading,
@@ -68,14 +71,22 @@ export function useDialog() {
       loading.value = true;
 
       try {
-        await useRequest('/schedule').put({
+        const {statusCode} = await useRequest('/schedule').put({
           taskId: taskId ?? activedTaskId.value,
           type: activedScheduleType.value,
           trigger: intervalInput.value ? `d${intervalInput.value}` : undefined,
         });
 
-        if (intervalInput.value) {
-          exitIntervalForm();
+        if (statusCode.value === 200) {
+          alert('提交成功');
+
+          if (intervalInput.value) {
+            exitIntervalForm();
+          }
+
+          ScheduleStore.fetch();
+        } else {
+          alert('提交失败');
         }
       } finally {
         loading.value = false;
