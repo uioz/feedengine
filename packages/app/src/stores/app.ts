@@ -1,17 +1,30 @@
 import {defineStore} from 'pinia';
 import type {NotificationMessage, ConfirmMessage} from 'feedengine';
 
+interface NormalMessage {
+  type: 'warning' | 'info' | 'error' | 'success';
+  message: string;
+}
+
+export type Message = NotificationMessage | ConfirmMessage | NormalMessage;
+
 interface AppStoreState {
-  message: NotificationMessage | ConfirmMessage | null;
+  messages: Array<Message>;
 }
 
 export const useAppStore = defineStore('app', {
   state: (): AppStoreState => ({
-    message: null,
+    messages: [],
   }),
   actions: {
-    globalMessage(message: NotificationMessage | ConfirmMessage) {
-      this.message = message;
+    globalMessage(message: Message) {
+      this.messages.push(message);
+    },
+    removeMessage(message: Message) {
+      this.messages.splice(
+        this.messages.findIndex((item) => item === message),
+        1
+      );
     },
   },
 });

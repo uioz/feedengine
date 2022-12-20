@@ -3,6 +3,7 @@ import {ScheduleType} from '@/stores/schedule';
 import {useRequest} from '@/utils/request';
 import type {TasksRes} from 'feedengine';
 import {useScheduleStore} from '@/stores/schedule';
+import {useAppStore} from '@/stores/app';
 
 export function useDialog() {
   const showDialog = ref(false);
@@ -78,7 +79,10 @@ export function useDialog() {
         });
 
         if (statusCode.value === 200) {
-          alert('提交成功');
+          useAppStore().globalMessage({
+            type: 'success',
+            message: '提交成功',
+          });
 
           if (intervalInput.value) {
             exitIntervalForm();
@@ -86,7 +90,10 @@ export function useDialog() {
 
           ScheduleStore.fetch();
         } else {
-          alert('提交失败');
+          useAppStore().globalMessage({
+            type: 'error',
+            message: '提交失败',
+          });
         }
       } finally {
         loading.value = false;

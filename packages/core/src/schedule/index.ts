@@ -6,7 +6,7 @@ import {PluginState} from '../plugins/index.js';
 import dayjs from 'dayjs';
 
 export enum ScheduleType {
-  core,
+  feedengine,
   startup,
   interval,
   manual,

@@ -66,27 +66,14 @@
         </VRow>
       </VContainer>
     </VMain>
-    <VSnackbar v-model="showSnackbar" vertical :color="message?.type" :timeout="4000">
-      {{ message?.message }}
-      <template v-slot:actions>
-        <template v-if="isConfirmMessage(message)">
-          <VBtn
-            v-for="item of message.actions"
-            :key="item.payload"
-            :href="item.type === 'link' ? item.payload : undefined"
-            :target="item.type === 'link' ? '_blank' : undefined"
-            @click="handleActions(item), consumeMesssage(message!)"
-            >{{ item.label }}</VBtn
-          >
-        </template>
-        <VBtn @click="(showSnackbar = false), consumeMesssage(message!)">确认</VBtn>
-      </template>
-    </VSnackbar>
+    <GlobalSnackbar v-for="item of messages" :key="item.message" :message="item"></GlobalSnackbar>
   </VApp>
 </template>
 <script setup lang="ts">
-import {isConfirmMessage} from '@/utils/message';
-import {useGlobalConfirm, useGlobalNotification} from './default';
+import {useGlobalNotification} from './default';
+import {useAppStore} from '@/stores/app';
+import GlobalSnackbar from '@/components/layout/GlobalSnackbar.vue';
+import {useMessageStore} from '@/stores/message';
 
 const links = [
   {text: '首页', icon: 'home', to: '/'},
@@ -96,7 +83,9 @@ const links = [
   {text: '设置', icon: 'settings', to: '/settings'},
 ];
 
-const {consumeMesssage, handleActions, showSnackbar, message} = useGlobalConfirm();
-
 const {notificationSet, showMenu, clearAllNotification, showNotification} = useGlobalNotification();
+
+const {messages} = useAppStore();
+
+const {consumeMesssage} = useMessageStore();
 </script>

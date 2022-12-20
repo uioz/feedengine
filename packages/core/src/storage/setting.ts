@@ -109,6 +109,28 @@ export class SettingManager {
     }
   }
 
+  async getGlobalSettings(): Promise<AppSettings> {
+    const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
+
+    if (result) {
+      return result.settings;
+    }
+
+    throw new Error();
+  }
+
+  setGlobalSettings(settings: AppSettings) {
+    return this.setPluginSettings(this.feedengine.name, settings);
+  }
+
+  async updateGlobalSettings<T extends keyof AppSettings>(target: T, data: AppSettings[T]) {
+    const settings = await this.getGlobalSettings();
+
+    settings[target] = data;
+
+    await this.setGlobalSettings(settings);
+  }
+
   async getPluginSettings<T>(name: string): Promise<{settings: T; version: string} | null> {
     if (this.pluginSettingCache.has(name)) {
       return this.pluginSettingCache.get(name);
