@@ -1,6 +1,6 @@
 <template>
   <section :class="section" class="mt-4">
-    <h4 class="text-h4">性能配置</h4>
+    <h4 class="text-h4">资源限制</h4>
     <VAlert title="说明" icon="info" class="mt-2">
       <p>
         <em>最大页面数</em>不限制那些计划任务外的调用, 例如插件通过
@@ -15,20 +15,70 @@
     <VForm class="mt-4">
       <VRow>
         <VCol>
-          <VTextField label="最大页面数"></VTextField>
+          <VTextField v-model="formData.pagesConcurrency" label="最大页面数" clearable></VTextField>
         </VCol>
         <VCol>
-          <VTextField label="任务并发数"></VTextField>
+          <VTextField v-model="formData.taskConcurrency" label="任务并发数" clearable></VTextField>
         </VCol>
         <VCol>
-          <VTextField label="IO并发数"></VTextField>
+          <VTextField v-model="formData.ioConcurrency" label="IO并发数" clearable></VTextField>
         </VCol>
       </VRow>
-      <VBtn>保存</VBtn>
-      <VBtn>取消</VBtn>
+      <VExpansionPanels class="mb-5">
+        <VExpansionPanel title="插件配置">
+          <VExpansionPanelText>
+            <VRow>
+              <VCol v-for="item of formData.plugins" :key="item.name" :cols="6">
+                <VCard :title="item.name" rounded="0">
+                  <VCardText>
+                    <div class="text-caption">任务并发数</div>
+                    <VSlider
+                      :min="1"
+                      :max="10"
+                      :step="1"
+                      v-model="item.maxTask"
+                      thumb-label
+                    ></VSlider>
+                    <div class="text-caption">IO并发数</div>
+                    <VSlider
+                      :min="1"
+                      :max="20"
+                      :step="1"
+                      v-model="item.maxIo"
+                      thumb-label
+                    ></VSlider>
+                  </VCardText>
+                </VCard>
+              </VCol>
+            </VRow>
+          </VExpansionPanelText>
+        </VExpansionPanel>
+      </VExpansionPanels>
+      <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
+      <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
+        >取消</VBtn
+      >
     </VForm>
   </section>
 </template>
 <script setup lang="ts">
 import {section} from './style.module.css';
+import type {AppSettings} from 'feedengine';
+import {useVModel} from '@vueuse/core';
+import {useFormdata} from './common';
+
+const props = defineProps<{
+  modelValue: AppSettings['performance'];
+}>();
+
+const emits = defineEmits<{
+  (e: 'update:modelValue', data: AppSettings['performance']): void;
+}>();
+
+const settings = useVModel(props, 'modelValue', emits);
+
+const {handleCancel, handleSubmit, formData, submitting, changed} = useFormdata(
+  'performance',
+  settings
+);
 </script>

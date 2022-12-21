@@ -12,12 +12,29 @@
       </p>
     </VAlert>
     <VForm class="mt-4">
-      <VTextField label="代理地址"></VTextField>
-      <VBtn>保存</VBtn>
-      <VBtn>取消</VBtn>
+      <VTextField v-model="formData.proxyUrl" label="代理地址" clearable></VTextField>
+      <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
+      <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
+        >取消</VBtn
+      >
     </VForm>
   </section>
 </template>
 <script setup lang="ts">
 import {section} from './style.module.css';
+import type {AppSettings} from 'feedengine';
+import {useVModel} from '@vueuse/core';
+import {useFormdata} from './common';
+
+const props = defineProps<{
+  modelValue: AppSettings['proxy'];
+}>();
+
+const emits = defineEmits<{
+  (e: 'update:modelValue', data: AppSettings['proxy']): void;
+}>();
+
+const settings = useVModel(props, 'modelValue', emits);
+
+const {handleCancel, handleSubmit, formData, submitting, changed} = useFormdata('proxy', settings);
 </script>

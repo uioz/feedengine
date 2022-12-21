@@ -5,9 +5,9 @@
     </VAlert>
     <template v-if="data">
       <Server v-model="data.server"></Server>
-      <Performance></Performance>
-      <Browser></Browser>
-      <Proxy></Proxy>
+      <Performance v-model="data.performance"></Performance>
+      <Browser v-model="data.driver"></Browser>
+      <Proxy v-model="data.proxy"></Proxy>
     </template>
   </div>
 </template>

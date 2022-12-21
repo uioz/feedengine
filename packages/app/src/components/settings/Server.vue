@@ -24,11 +24,8 @@
 <script setup lang="ts">
 import {section} from './style.module.css';
 import type {AppSettings} from 'feedengine';
-import {ref, nextTick} from 'vue';
-import {clone} from '@/utils/helper';
-import {useRequest} from '@/utils/request';
-import {syncRef, useVModel, watchPausable} from '@vueuse/core';
-import {useAppStore} from '@/stores/app';
+import {useVModel} from '@vueuse/core';
+import {useFormdata} from './common';
 
 const props = defineProps<{
   modelValue: AppSettings['server'];
@@ -40,44 +37,5 @@ const emits = defineEmits<{
 
 const settings = useVModel(props, 'modelValue', emits);
 
-const formData = ref(clone(settings.value));
-
-const changed = ref(false);
-
-const {pause, resume} = watchPausable(formData, () => (changed.value = true), {
-  deep: true,
-});
-
-function handleCancel() {
-  pause();
-  formData.value = clone(settings.value);
-  changed.value = false;
-  nextTick(resume);
-}
-
-const submitting = ref(false);
-
-function handleSubmit() {
-  const {statusCode, onFetchFinally, isFetching} = useRequest('/settings/feedengine/server').patch(
-    formData
-  );
-
-  syncRef(submitting, isFetching);
-
-  onFetchFinally(() => {
-    if (statusCode.value === 200) {
-      settings.value = formData.value;
-      changed.value = false;
-      useAppStore().globalMessage({
-        type: 'success',
-        message: '修改成功',
-      });
-    } else {
-      useAppStore().globalMessage({
-        type: 'success',
-        message: '修改失败',
-      });
-    }
-  });
-}
+const {handleCancel, handleSubmit, formData, submitting, changed} = useFormdata('server', settings);
 </script>
