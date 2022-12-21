@@ -19,6 +19,5 @@ export const settingsRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
   }>('/settings/feedengine/:target', async (req) => {
     await settingManager.updateGlobalSettings(req.params.target, req.body as any);
   });
-
   done();
 };

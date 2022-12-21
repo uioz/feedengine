@@ -1,6 +1,7 @@
 import {PluginState as PS} from './plugin.js';
 import {TaskState} from '../task/index.js';
 import {ScheduleType} from '../schedule/index.js';
+import {AppSettings} from './settings.js';
 
 export interface LivingRes {
   name: string;
@@ -64,3 +65,12 @@ export type ScheduleRes = Array<Schedule>;
 export type SchedulePutRes = {
   scheduleId: number;
 };
+
+export enum ServiceErrorCode {
+  globalSettingsReconfiguration,
+}
+
+export interface ReconfigurationErrorRes {
+  code: ServiceErrorCode.globalSettingsReconfiguration;
+  data: AppSettings;
+}

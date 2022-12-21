@@ -23,6 +23,7 @@ import {EventEmitter} from 'node:events';
 import {NotificationType} from '../message/index.js';
 import type {Page} from 'puppeteer-core';
 import fastq, {type queueAsPromised} from 'fastq';
+import {plugin as builtinFeedenginePlugin} from './feedengine.js';
 
 export enum PluginState {
   ready,
@@ -33,7 +34,7 @@ export enum PluginState {
   error,
 }
 
-const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin']);
+const builtinPlugins = new Set(['feedengine-app-plugin', 'feedengine-atom-plugin', 'feedengine']);
 
 const pluginPattern = /feedengine-.+-plugin$/;
 
@@ -135,14 +136,6 @@ export class PluginWrap implements PluginOptions, Initable {
   }
 
   async init() {
-    const {plugins} = await this.deps.appManager.getPerformance();
-
-    for (const plugin of plugins) {
-      if (plugin.name === this.name) {
-        this.performanceSettings = plugin;
-      }
-    }
-
     const no = (type: NotificationType) => this.deps.messageManager.notification(this.name)[type];
 
     const co = (type: NotificationType) => this.deps.messageManager.confirm(this.name)[type];
@@ -256,12 +249,6 @@ export class PluginWrap implements PluginOptions, Initable {
         this.context,
         builtinPlugins.has(this.name) ? this.deps : undefined
       );
-
-      this.version = JSON.parse(
-        await readFile(resolve(this.nodeModulesDir, this.name, 'package.json'), {
-          encoding: 'utf-8',
-        })
-      ).version;
 
       if (plugin.app) {
         const {dir, baseUrl, settingUrl} = plugin.app;
@@ -498,9 +485,30 @@ export class PluginManager implements Initable, Closeable {
 
     const pluginsInDeps = Object.keys(dependencies).filter((name) => pluginPattern.test(name));
 
-    const loadedPluginNamesSet: Set<string> = new Set();
+    const successfullyPluginNames: Set<string> = new Set();
 
-    this.hook = new Hook(loadedPluginNamesSet, this.pluginStates);
+    this.hook = new Hook(successfullyPluginNames, this.pluginStates);
+
+    const createPluginWrap = (
+      pluginName: string,
+      plugin: PluginOptionsConstructor,
+      version: string
+    ) => {
+      const p = new PluginWrap(
+        plugin,
+        context,
+        pluginName,
+        nodeModulesDir,
+        this.deps,
+        this.hook,
+        this.store,
+        this.pluginStates
+      );
+
+      p.version = version;
+
+      return p;
+    };
 
     this.loadedPlugins = (
       await Promise.all(
@@ -511,18 +519,15 @@ export class PluginManager implements Initable, Closeable {
             if (plugin) {
               this.log.info(`load plugin ${pluginName}`);
 
-              const p = new PluginWrap(
-                plugin,
-                context,
+              return createPluginWrap(
                 pluginName,
-                nodeModulesDir,
-                this.deps,
-                this.hook,
-                this.store,
-                this.pluginStates
+                plugin,
+                JSON.parse(
+                  await readFile(resolve(nodeModulesDir, pluginName, 'package.json'), {
+                    encoding: 'utf-8',
+                  })
+                ).version
               );
-
-              return p;
             }
 
             throw new Error(`the ${pluginName} doesn't have named export of plugin`);
@@ -533,19 +538,64 @@ export class PluginManager implements Initable, Closeable {
       )
     ).filter((item) => item !== undefined) as Array<PluginWrap>;
 
-    this.loadedPlugins.forEach(({name}) => loadedPluginNamesSet.add(name));
+    this.loadedPlugins.push(
+      createPluginWrap('feedengine', builtinFeedenginePlugin as any, this.deps.feedengine.version)
+    );
+
+    this.loadedPlugins.forEach(({name}) => successfullyPluginNames.add(name));
   }
 
   async init() {
-    await Promise.all(
-      this.loadedPlugins
-        .filter(({name}) => !builtinPlugins.has(name))
-        .map((plugin) => plugin.init())
-    );
+    const reconfiguration = this.deps.settingManager.reconfiguration;
 
-    await Promise.all(
-      this.loadedPlugins.filter(({name}) => builtinPlugins.has(name)).map((plugin) => plugin.init())
-    );
+    const bulitinPlugins = this.loadedPlugins.filter(({name}) => builtinPlugins.has(name));
+
+    const pluginsPerformance = reconfiguration
+      ? undefined
+      : (await this.deps.appManager.getPerformance()).plugins;
+
+    const initPlugin = (pluginsPerformance?: Array<PluginPerformanceSettings & {name: string}>) => {
+      if (pluginsPerformance) {
+        return (plugin: PluginWrap) => {
+          plugin.performanceSettings = pluginsPerformance.find(
+            (item) => item.name === plugin.name
+          )!;
+
+          return plugin.init();
+        };
+      }
+
+      return (plugin: PluginWrap) => {
+        plugin.performanceSettings = {
+          maxIo: 1,
+          maxTask: 1,
+        };
+
+        return plugin.init();
+      };
+    };
+
+    if (reconfiguration) {
+      this.loadedPlugins = bulitinPlugins;
+    } else {
+      await Promise.all(
+        this.loadedPlugins
+          .filter(({name}) => !builtinPlugins.has(name))
+          .map(initPlugin(pluginsPerformance))
+      );
+    }
+
+    await Promise.all(bulitinPlugins.map(initPlugin(pluginsPerformance)));
+
+    await Promise.all([
+      this.deps.storageManager.pluginModel.bulkCreate(
+        this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version})),
+        {
+          ignoreDuplicates: true,
+        }
+      ),
+      reconfiguration ? undefined : this.deps.settingManager.syncGlobalSettings(),
+    ]);
 
     this.log.info(`init`);
   }

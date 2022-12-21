@@ -2,6 +2,7 @@ import {TopDeps} from './index.js';
 import type {Initable, Closeable, AppSettings} from './types/index.js';
 import process from 'node:process';
 import {PluginState} from './plugins/index.js';
+import {defaultAppSettings} from './storage/setting.js';
 
 export enum MessageType {
   'restart',
@@ -9,36 +10,12 @@ export enum MessageType {
 
 export class AppManager implements Initable, Closeable {
   deps: TopDeps;
-  firstBooting = false;
   log: TopDeps['log'];
 
   constructor(container: TopDeps) {
     this.deps = container;
     this.log = container.log.child({source: AppManager.name});
     process.on('exit', () => this.log.info('exit'));
-  }
-
-  private async syncPlugins() {
-    this.firstBooting =
-      (await this.deps.storageManager.pluginModel.findOne({
-        where: {
-          name: this.deps.feedengine.name,
-        },
-      })) === null;
-
-    if (this.firstBooting) {
-      await this.deps.storageManager.pluginModel.create({
-        name: this.deps.feedengine.name,
-        version: this.deps.feedengine.version,
-      });
-    }
-
-    await this.deps.storageManager.pluginModel.bulkCreate(
-      this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version})),
-      {
-        ignoreDuplicates: true,
-      }
-    );
   }
 
   async getServerConfig() {
@@ -48,6 +25,8 @@ export class AppManager implements Initable, Closeable {
 
     if (result) {
       return result.settings.server;
+    } else if (this.deps.settingManager.reconfiguration) {
+      return defaultAppSettings.server;
     }
 
     throw new Error('app settings was missing');
@@ -60,6 +39,8 @@ export class AppManager implements Initable, Closeable {
 
     if (result) {
       return result.settings.driver;
+    } else if (this.deps.settingManager.reconfiguration) {
+      return defaultAppSettings.driver;
     }
 
     throw new Error('app settings was missing');
@@ -72,6 +53,8 @@ export class AppManager implements Initable, Closeable {
 
     if (result) {
       return result.settings.performance;
+    } else if (this.deps.settingManager.reconfiguration) {
+      return defaultAppSettings.performance;
     }
 
     throw new Error('app settings was missing');
@@ -84,6 +67,8 @@ export class AppManager implements Initable, Closeable {
 
     if (result) {
       return result.settings.proxy;
+    } else if (this.deps.settingManager.reconfiguration) {
+      return defaultAppSettings.proxy;
     }
 
     throw new Error('app settings was missing');
@@ -118,22 +103,22 @@ export class AppManager implements Initable, Closeable {
 
     await Promise.all([this.deps.storageManager.init(), this.deps.pluginManager.loadPlugins()]);
 
-    await Promise.all([this.syncPlugins(), this.deps.settingManager.syncGlobalSettings()]);
+    await this.deps.settingManager.init();
 
-    await this.deps.taskManager.init();
+    const reconfiguration = this.deps.settingManager.reconfiguration;
+
+    if (!reconfiguration) {
+      await this.deps.taskManager.init();
+    }
 
     await this.deps.pluginManager.init();
 
-    // TODO: 如果首次启动, 禁止一切非核心插件的启动
-    if (!this.firstBooting) {
+    if (!reconfiguration) {
       await this.deps.driverManager.init();
+      this.deps.pluginManager.hook.once(`all-${PluginState[PluginState.actived]}`, () => {
+        this.deps.scheduleManager.active();
+      });
     }
-
-    this.deps.pluginManager.hook.once(`all-${PluginState[PluginState.actived]}`, () => {
-      this.deps.scheduleManager.active();
-    });
-
-    await this.deps.storageManager.sequelize.sync();
 
     this.deps.pluginManager.create();
 

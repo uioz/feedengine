@@ -1,4 +1,4 @@
-import {Initable, Closeable} from '../types/index.js';
+import {Initable, Closeable, ServiceErrorCode, ReconfigurationErrorRes} from '../types/index.js';
 import {TopDeps} from '../index.js';
 import {fastify, type FastifyInstance} from 'fastify';
 import {
@@ -24,35 +24,46 @@ export class ServerManager implements Initable, Closeable {
       logger: this.log,
     });
 
-    this.server.register(appRoute, {
-      deps,
-      prefix: '/api',
-    });
+    if (deps.settingManager.reconfiguration) {
+      this.server.get<{
+        Reply: ReconfigurationErrorRes;
+      }>('/api/*', async (req, res) => {
+        res.code(400).send({
+          code: ServiceErrorCode.globalSettingsReconfiguration,
+          data: await deps.settingManager.makeDefaultGlobalSettings(),
+        });
+      });
+    } else {
+      this.server.register(appRoute, {
+        deps,
+        prefix: '/api',
+      });
 
-    this.server.register(messageRoute, {
-      deps,
-      prefix: '/api',
-    });
+      this.server.register(messageRoute, {
+        deps,
+        prefix: '/api',
+      });
 
-    this.server.register(pluginRoute, {
-      deps,
-      prefix: '/api',
-    });
+      this.server.register(pluginRoute, {
+        deps,
+        prefix: '/api',
+      });
 
-    this.server.register(taskRoute, {
-      deps,
-      prefix: '/api',
-    });
+      this.server.register(taskRoute, {
+        deps,
+        prefix: '/api',
+      });
 
-    this.server.register(scheduleRoute, {
-      deps,
-      prefix: '/api',
-    });
+      this.server.register(scheduleRoute, {
+        deps,
+        prefix: '/api',
+      });
 
-    this.server.register(settingsRoute, {
-      deps,
-      prefix: '/api',
-    });
+      this.server.register(settingsRoute, {
+        deps,
+        prefix: '/api',
+      });
+    }
   }
 
   async init() {

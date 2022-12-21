@@ -1,5 +1,5 @@
 import type {TopDeps} from '../index.js';
-import type {AppSettings, PluginPerformanceSettings} from '../types/index.js';
+import type {AppSettings, PluginPerformanceSettings, Initable} from '../types/index.js';
 
 type PluginSettingModel = TopDeps['storageManager']['settingsModel'];
 type PluginModel = TopDeps['storageManager']['pluginModel'];
@@ -30,7 +30,7 @@ export const defaultPluginConfig: PluginPerformanceSettings = {
   maxTask: 1,
 };
 
-function diffPluginsSetting(
+function diffAndPrunePerformance(
   performance: AppSettings['performance'],
   plugins: Array<{name: string}>
 ): boolean {
@@ -60,7 +60,7 @@ function diffPluginsSetting(
   return false;
 }
 
-export class SettingManager {
+export class SettingManager implements Initable {
   storageManager: TopDeps['storageManager'];
   log: TopDeps['log'];
   pluginSettingsModel: PluginSettingModel;
@@ -69,6 +69,7 @@ export class SettingManager {
   pluginManager: TopDeps['pluginManager'];
   appManager: TopDeps['appManager'];
   feedengine: TopDeps['feedengine'];
+  reconfiguration = false;
 
   constructor({storageManager, log, pluginManager, appManager, feedengine}: TopDeps) {
     this.storageManager = storageManager;
@@ -86,12 +87,28 @@ export class SettingManager {
     this.pluginManager = pluginManager;
   }
 
+  async init() {
+    const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
+
+    if (result === null) {
+      this.reconfiguration = true;
+    } else {
+      this.reconfiguration = false;
+    }
+  }
+
+  async makeDefaultGlobalSettings() {
+    const settings = JSON.parse(JSON.stringify(defaultAppSettings)) as AppSettings;
+
+    diffAndPrunePerformance(settings.performance, this.pluginManager.loadedPlugins);
+
+    return settings;
+  }
+
   async syncGlobalSettings() {
     const result = await this.getPluginSettings<AppSettings>(this.feedengine.name);
 
     if (result === null) {
-      this.appManager.firstBooting = true;
-
       const settings = {
         ...defaultAppSettings,
       };
@@ -102,7 +119,9 @@ export class SettingManager {
       }));
 
       await this.setPluginSettings(this.feedengine.name, settings);
-    } else if (diffPluginsSetting(result.settings.performance, this.pluginManager.loadedPlugins)) {
+    } else if (
+      diffAndPrunePerformance(result.settings.performance, this.pluginManager.loadedPlugins)
+    ) {
       this.log.info(`settings.performence was pruned`);
 
       await this.setPluginSettings(this.feedengine.name, result.settings);

@@ -3,11 +3,6 @@
     <h4 class="text-h4">浏览器</h4>
     <VAlert title="说明" icon="info" class="mt-2">
       <p>浏览器配置可以通过在浏览器地址栏中输入<em>chrome://version</em>获得</p>
-      <p>
-        windows 平台的地址需要对反斜线进行转义, 例如:<code
-          >C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe</code
-        >而不是<code>C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe</code>
-      </p>
     </VAlert>
     <VForm class="mt-4">
       <VTextField
