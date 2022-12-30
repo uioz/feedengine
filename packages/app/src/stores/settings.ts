@@ -2,12 +2,12 @@ import {defineStore} from 'pinia';
 import type {AppSettings} from 'feedengine';
 import {useRequest} from '@/utils/request';
 
-interface ScheduleStoreState {
+interface SettingsStoreState {
   settings: AppSettings | null;
 }
 
 export const useSettingsStore = defineStore('settings', {
-  state: (): ScheduleStoreState => ({
+  state: (): SettingsStoreState => ({
     settings: null,
   }),
   actions: {

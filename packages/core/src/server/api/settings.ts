@@ -12,6 +12,12 @@ export const settingsRoute: FastifyPluginCallback<{deps: TopDeps}> = function (
     res.send(await settingManager.getGlobalSettings());
   });
 
+  fastify.post<{
+    Body: AppSettings;
+  }>('/settings/feedengine', async (req, res) => {
+    res.send(await settingManager.setGlobalSettings(req.body));
+  });
+
   fastify.patch<{
     Params: {
       target: keyof AppSettings;

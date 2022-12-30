@@ -11,13 +11,11 @@
         为了兼容性考虑建议使用<em>http</em>协议
       </p>
     </VAlert>
-    <VForm class="mt-4">
-      <VTextField v-model="formData.proxyUrl" label="代理地址" clearable></VTextField>
-      <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
-      <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
-        >取消</VBtn
-      >
-    </VForm>
+    <ProxyForm class="mt-4" v-model:form-data="formData" :readonly="submitting"></ProxyForm>
+    <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
+    <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
+      >取消</VBtn
+    >
   </section>
 </template>
 <script setup lang="ts">
@@ -25,6 +23,7 @@ import {section} from './style.module.css';
 import type {AppSettings} from 'feedengine';
 import {useVModel} from '@vueuse/core';
 import {useFormdata} from './common';
+import ProxyForm from './ProxyForm.vue';
 
 const props = defineProps<{
   modelValue: AppSettings['proxy'];

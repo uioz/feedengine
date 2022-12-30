@@ -19,7 +19,8 @@
   "license": "ISC",
   "dependencies": {
     "feedengine-plugin": "workspace:^0.1.0",
-    "mitt": "^3.0.0"
+    "mitt": "^3.0.0",
+    "yup": "^0.32.11"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^4.0.0",

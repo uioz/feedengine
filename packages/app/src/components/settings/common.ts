@@ -4,6 +4,7 @@ import {clone} from '@/utils/helper';
 import {useRequest} from '@/utils/request';
 import {syncRef, watchPausable} from '@vueuse/core';
 import {useAppStore} from '@/stores/app';
+import type {AnySchema, ValidationError} from 'yup';
 
 export function useFormdata<T extends keyof AppSettings>(type: T, settings: Ref<AppSettings[T]>) {
   const formData = ref(clone(settings.value));
@@ -53,5 +54,17 @@ export function useFormdata<T extends keyof AppSettings>(type: T, settings: Ref<
     changed,
     handleSubmit,
     handleCancel,
+  };
+}
+
+export function formRuleValidateHelper(schame: AnySchema) {
+  return (value: any) => {
+    try {
+      schame.validateSync(value);
+    } catch (error) {
+      return (error as ValidationError).errors[0];
+    }
+
+    return true;
   };
 }

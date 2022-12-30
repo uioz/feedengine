@@ -280,6 +280,10 @@ export class ScheduleManager implements Closeable {
   }
 
   async close() {
+    for (const ref of this.refs.values()) {
+      ref.job?.cancel();
+    }
+
     this.log.info('close');
   }
 }

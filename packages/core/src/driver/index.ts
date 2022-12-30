@@ -2,7 +2,7 @@ import * as PuppeteerCore from 'puppeteer-core';
 import type {Browser, LaunchOptions} from 'puppeteer-core';
 import {PuppeteerExtra} from 'puppeteer-extra';
 import Stealth from 'puppeteer-extra-plugin-stealth';
-import {Initable, AppSettings} from '../types/index.js';
+import {Initable, Closeable, AppSettings} from '../types/index.js';
 import type {TopDeps} from '../index.js';
 import * as fastq from 'fastq';
 import type {queueAsPromised} from 'fastq';
@@ -11,7 +11,7 @@ const puppeteer = new PuppeteerExtra(PuppeteerCore, undefined);
 
 puppeteer.use(Stealth());
 
-export class DriverManager implements Initable {
+export class DriverManager implements Initable, Closeable {
   appManager: TopDeps['appManager'];
   log: TopDeps['log'];
   messageManager: TopDeps['messageManager'];
@@ -109,5 +109,9 @@ export class DriverManager implements Initable {
       this.activedPagePool.delete(page);
       release();
     }
+  }
+
+  async close() {
+    this.#browser.close();
   }
 }

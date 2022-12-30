@@ -578,6 +578,7 @@ export class PluginManager implements Initable, Closeable {
     if (reconfiguration) {
       this.loadedPlugins = bulitinPlugins;
     } else {
+      await this.deps.settingManager.syncGlobalSettings();
       await Promise.all(
         this.loadedPlugins
           .filter(({name}) => !builtinPlugins.has(name))
@@ -587,15 +588,12 @@ export class PluginManager implements Initable, Closeable {
 
     await Promise.all(bulitinPlugins.map(initPlugin(pluginsPerformance)));
 
-    await Promise.all([
-      this.deps.storageManager.pluginModel.bulkCreate(
-        this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version})),
-        {
-          ignoreDuplicates: true,
-        }
-      ),
-      reconfiguration ? undefined : this.deps.settingManager.syncGlobalSettings(),
-    ]);
+    await this.deps.storageManager.pluginModel.bulkCreate(
+      this.deps.pluginManager.loadedPlugins.map(({name, version}) => ({name, version})),
+      {
+        ignoreDuplicates: true,
+      }
+    );
 
     this.log.info(`init`);
   }

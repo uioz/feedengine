@@ -4,20 +4,13 @@
     <VAlert title="说明" icon="info" class="mt-2">
       <p>浏览器配置可以通过在浏览器地址栏中输入<em>chrome://version</em>获得</p>
     </VAlert>
-    <VForm class="mt-4">
-      <VTextField
-        v-model="formData.executablePath"
-        label="可执行文件路径"
-        placeholder="例如: "
-        clearable
-      ></VTextField>
-      <VTextField v-model="formData.userDataDir" label="个人资料路径" clearable></VTextField>
-      <VSwitch v-model="formData.headless" label="无头模式" color="primary"></VSwitch>
+    <DriverForm class="mt-4" v-model:form-data="formData" :readonly="submitting"></DriverForm>
+    <template v-if="showActions">
       <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
       <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
         >取消</VBtn
       >
-    </VForm>
+    </template>
   </section>
 </template>
 <script setup lang="ts">
@@ -25,10 +18,17 @@ import {section} from './style.module.css';
 import type {AppSettings} from 'feedengine';
 import {useVModel} from '@vueuse/core';
 import {useFormdata} from './common';
+import DriverForm from './DriverForm.vue';
 
-const props = defineProps<{
-  modelValue: AppSettings['driver'];
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: AppSettings['driver'];
+    showActions: boolean;
+  }>(),
+  {
+    showActions: true,
+  }
+);
 
 const emits = defineEmits<{
   (e: 'update:modelValue', data: AppSettings['driver']): void;

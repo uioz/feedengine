@@ -85,7 +85,13 @@ export class AppManager implements Initable, Closeable {
   }
 
   async close() {
-    await this.deps.taskManager.close();
+    const reconfiguration = this.deps.settingManager.reconfiguration;
+
+    if (!reconfiguration) {
+      await this.deps.scheduleManager.close();
+      await this.deps.taskManager.close();
+      await this.deps.driverManager.close();
+    }
 
     await this.deps.pluginManager.close();
 

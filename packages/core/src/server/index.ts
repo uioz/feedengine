@@ -24,6 +24,16 @@ export class ServerManager implements Initable, Closeable {
       logger: this.log,
     });
 
+    this.server.register(appRoute, {
+      deps,
+      prefix: '/api',
+    });
+
+    this.server.register(settingsRoute, {
+      deps,
+      prefix: '/api',
+    });
+
     if (deps.settingManager.reconfiguration) {
       this.server.get<{
         Reply: ReconfigurationErrorRes;
@@ -34,11 +44,6 @@ export class ServerManager implements Initable, Closeable {
         });
       });
     } else {
-      this.server.register(appRoute, {
-        deps,
-        prefix: '/api',
-      });
-
       this.server.register(messageRoute, {
         deps,
         prefix: '/api',
@@ -55,11 +60,6 @@ export class ServerManager implements Initable, Closeable {
       });
 
       this.server.register(scheduleRoute, {
-        deps,
-        prefix: '/api',
-      });
-
-      this.server.register(settingsRoute, {
         deps,
         prefix: '/api',
       });
