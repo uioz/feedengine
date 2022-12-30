@@ -93,6 +93,7 @@ export class ScheduleManager implements Closeable {
         });
 
         this.refs.set(scheduleId, {
+          job,
           taskRef: dayjs(lastRun).add(parseInt(day), 'day').isSame(dayjs(), 'date')
             ? this.taskManager.execTask(taskId, scheduleId).onSuccess(this.taskSuccessCallback)
             : undefined,

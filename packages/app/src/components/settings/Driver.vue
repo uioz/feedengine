@@ -5,12 +5,10 @@
       <p>浏览器配置可以通过在浏览器地址栏中输入<em>chrome://version</em>获得</p>
     </VAlert>
     <DriverForm class="mt-4" v-model:form-data="formData" :readonly="submitting"></DriverForm>
-    <template v-if="showActions">
-      <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
-      <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
-        >取消</VBtn
-      >
-    </template>
+    <VBtn @click="handleSubmit" :loading="submitting" :disabled="!changed">修改</VBtn>
+    <VBtn class="ml-2" v-show="changed && !submitting" @click="handleCancel" variant="text"
+      >取消</VBtn
+    >
   </section>
 </template>
 <script setup lang="ts">
@@ -20,15 +18,9 @@ import {useVModel} from '@vueuse/core';
 import {useFormdata} from './common';
 import DriverForm from './DriverForm.vue';
 
-const props = withDefaults(
-  defineProps<{
-    modelValue: AppSettings['driver'];
-    showActions: boolean;
-  }>(),
-  {
-    showActions: true,
-  }
-);
+const props = defineProps<{
+  modelValue: AppSettings['driver'];
+}>();
 
 const emits = defineEmits<{
   (e: 'update:modelValue', data: AppSettings['driver']): void;

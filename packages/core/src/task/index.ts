@@ -82,7 +82,7 @@ export class TaskWrap {
     taskMeta.tasksInRunning.push(this);
 
     this.log = this.deps.log.child({
-      source: `${taskMeta.plugin.name}@${taskMeta.taskName}@${taskId}`,
+      source: `${taskMeta.plugin.name}@${taskMeta.taskName}@${scheduleId}`,
     });
 
     taskMeta.plugin.taskConcurrencyQueue
