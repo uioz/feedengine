@@ -1,5 +1,5 @@
 <template>
-  <VContainer>
+  <div>
     <VSheet v-for="item of list" :key="item.type" rounded="lg" class="mb-2">
       <VToolbar rounded="lg" :title="item.label">
         <VBtn
@@ -66,7 +66,7 @@
         </VCardActions>
       </VCard>
     </VDialog>
-  </VContainer>
+  </div>
 </template>
 <script setup lang="ts">
 import {useScheduleStore, ScheduleType} from '@/stores/schedule';

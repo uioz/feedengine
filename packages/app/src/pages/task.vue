@@ -1,11 +1,11 @@
 <template>
-  <VContainer>
+  <div>
     <VRow v-for="(value, key) in data" :key="key">
       <VCol>
         <TaskCard :plugin-name="key" :tasks="value"></TaskCard>
       </VCol>
     </VRow>
-  </VContainer>
+  </div>
 </template>
 <script setup lang="ts">
 import type {GroupedTasksRes} from 'feedengine';
