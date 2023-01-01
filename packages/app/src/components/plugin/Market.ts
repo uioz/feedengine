@@ -18,6 +18,10 @@ export function usePagination(serachText: Ref<string>) {
     currentPageSize: number;
   }) {
     loading.value = true;
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
     try {
       const result = await queryRegistry.searchPackages({
         query: {
@@ -29,11 +33,6 @@ export function usePagination(serachText: Ref<string>) {
       total.value = result.total;
 
       data.value = result.objects;
-
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth',
-      });
     } finally {
       loading.value = false;
     }

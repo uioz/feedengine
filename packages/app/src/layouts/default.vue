@@ -47,7 +47,7 @@
         <VRow>
           <VCol cols="2">
             <VCard flat>
-              <VList>
+              <VList bg-color="white">
                 <VListItem
                   v-for="item of links"
                   :key="item.text"
